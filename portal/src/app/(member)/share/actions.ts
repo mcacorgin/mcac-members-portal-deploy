@@ -6,6 +6,7 @@ import { requireViewer } from "@/lib/auth";
 import { memberAccessError } from "@/lib/authz";
 import { createPost } from "@/lib/posts/mutations";
 import { POST_TYPE_NAMES, type PostTypeName } from "@/lib/posts/types";
+import { mandateOpportunityMetadataFromForm } from "@/lib/posts/opportunity";
 import {
   ALLOWED_ATTACHMENT_MIMES,
   MAX_ATTACHMENT_BYTES,
@@ -31,10 +32,7 @@ function buildMetadata(
   switch (type) {
     case "opportunity":
       return {
-        metadata: {
-          industry: text(formData, "industry"),
-          requestedAction: text(formData, "requestedAction"),
-        },
+        metadata: mandateOpportunityMetadataFromForm(formData),
       };
     case "job": {
       const industry = text(formData, "industry");

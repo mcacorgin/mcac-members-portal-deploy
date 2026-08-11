@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db, tables } from "@/db";
 import { productionConfigErrors } from "@/lib/production-readiness";
@@ -23,7 +23,7 @@ export async function GET() {
         }),
         db.query.users.findFirst({
           where: and(
-            eq(tables.users.role, "admin"),
+            inArray(tables.users.role, ["admin", "superadmin"]),
             eq(tables.users.status, "approved"),
           ),
           columns: { id: true },
@@ -34,7 +34,7 @@ export async function GET() {
         notice &&
           admin &&
           expertise &&
-          !/DRAFT|PENDING LEGAL REVIEW|\[[^\]]*CONFIRM[^\]]*\]/i.test(
+          !/INTERIM PRIVACY DISCLOSURE|DRAFT|PENDING LEGAL REVIEW|\[[^\]]*CONFIRM[^\]]*\]/i.test(
             notice.body,
           ),
       );

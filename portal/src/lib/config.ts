@@ -7,7 +7,7 @@ import { z } from "zod";
 
 const registry = {
   "brand.goldPresence": z.enum(["restrained", "stronger"]).default("restrained"),
-  "auth.emailFallbackEnabled": z.boolean().default(true),
+  "auth.emailFallbackEnabled": z.boolean().default(false),
   "contact.defaults.phone": z
     .enum(["visible", "hidden", "admin_only"])
     .default("hidden"),
@@ -17,7 +17,8 @@ const registry = {
   "contact.defaults.linkedin": z
     .enum(["visible", "hidden", "admin_only"])
     .default("visible"),
-  "posts.opportunityExpiryDays": z.number().int().min(1).default(90),
+  "posts.opportunityExpiryDays": z.number().int().min(1).default(60),
+  "posts.jobExpiryDays": z.number().int().min(1).default(60),
   "posts.expiryAdminOverridable": z.boolean().default(true),
   // Global section toggles (CONT-04); per-member overrides live in
   // member_section_overrides.

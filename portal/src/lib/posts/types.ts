@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  mandateOpportunityMetadataSchema,
+  opportunityMetadataSchema,
+} from "./opportunity";
 
 // Post-type capability schema (frozen contract: BUILD-PLAN.md Wave 1).
 // Opportunity / job / knowledge / event share one posts engine; a type may
@@ -21,11 +25,6 @@ export type PostCapabilities = {
   attachments: boolean;
   tagging: boolean;
 };
-
-const opportunityMetadataSchema = z.object({
-  industry: z.string().min(1),
-  requestedAction: z.string().min(1),
-});
 
 const jobMetadataSchema = z.object({
   industry: z.string().min(1).optional(),
@@ -57,7 +56,7 @@ export const TYPE_CONFIG = {
     capabilities: {
       comments: true,
       bookmarks: true,
-      expiry: false,
+      expiry: true,
       attachments: true,
       tagging: true,
     },
@@ -101,7 +100,11 @@ export const createPostInputSchema = z
     taggedUserIds: z.array(z.uuid()).max(20).default([]),
   })
   .superRefine((input, ctx) => {
-    const parsed = TYPE_CONFIG[input.type].metadataSchema.safeParse(
+    const metadataSchema =
+      input.type === "opportunity"
+        ? mandateOpportunityMetadataSchema
+        : TYPE_CONFIG[input.type].metadataSchema;
+    const parsed = metadataSchema.safeParse(
       input.metadata,
     );
     if (!parsed.success) {

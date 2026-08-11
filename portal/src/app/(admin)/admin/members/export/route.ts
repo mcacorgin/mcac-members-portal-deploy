@@ -1,11 +1,12 @@
-import { requireViewer } from "@/lib/auth";
+import { requireViewerFromRequest } from "@/lib/auth";
+import type { NextRequest } from "next/server";
 import { exportMembersCsv, exportMembersXlsx } from "@/lib/admin/export";
 
 // ADMIN-04 export endpoint: GET /admin/members/export?format=csv|xlsx.
 // Authorization happens inside the export functions (adminAccessError);
 // any denial becomes a 403 JSON response and no data is streamed.
 
-export async function GET(request: Request): Promise<Response> {
+export async function GET(request: NextRequest): Promise<Response> {
   const url = new URL(request.url);
   const format = url.searchParams.get("format") ?? "csv";
   if (format !== "csv" && format !== "xlsx") {
@@ -15,7 +16,7 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  const viewer = await requireViewer();
+  const viewer = await requireViewerFromRequest(request);
 
   if (format === "csv") {
     const result = await exportMembersCsv(viewer);

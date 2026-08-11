@@ -36,6 +36,7 @@ export const EXPERTISE_TAGS = [
   "Pharma",
   "Auto Components",
   "Manufacturing & Engineering",
+  "Retail",
   "EPC & Infrastructure",
   "Logistics & Warehousing",
   "Banking & NBFC",

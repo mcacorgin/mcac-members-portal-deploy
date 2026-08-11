@@ -13,7 +13,7 @@ export type Viewer = {
   id: string;
   name: string;
   email: string;
-  role: "member" | "admin";
+  role: "member" | "admin" | "superadmin";
   status: "pending" | "approved" | "rejected" | "needs_changes" | "suspended";
 };
 
@@ -42,7 +42,12 @@ export function memberAccessError(viewer: Viewer | null): ErrorCode | null {
 export function adminAccessError(viewer: Viewer | null): ErrorCode | null {
   const memberErr = memberAccessError(viewer);
   if (memberErr) return memberErr;
-  return viewer!.role === "admin" ? null : "forbidden";
+  return hasAdminRole(viewer!.role) ? null : "forbidden";
+}
+
+/** Superadmins inherit every administrator permission. */
+export function hasAdminRole(role: Viewer["role"]): boolean {
+  return role === "admin" || role === "superadmin";
 }
 
 // ---------------------------------------------------------------------------
@@ -95,7 +100,7 @@ export function projectContact(
   subject: ContactFields & { userId: string },
 ): ProjectedContact {
   const isSelf = viewer.id === subject.userId;
-  const isAdmin = viewer.role === "admin" && viewer.status === "approved";
+  const isAdmin = hasAdminRole(viewer.role) && viewer.status === "approved";
   const permitted = (vis: ContactFields["phoneVisibility"]) => {
     if (isSelf || isAdmin) return true;
     if (viewer.status !== "approved") return false;

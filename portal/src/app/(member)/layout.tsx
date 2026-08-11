@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
-import { memberAccessError } from "@/lib/authz";
+import { hasAdminRole, memberAccessError } from "@/lib/authz";
 import { resolveLandingPath } from "@/lib/account/routing";
 import { listNotifications } from "@/lib/notifications/queries";
 import { PortalShell } from "@/components/portal-shell";
@@ -30,7 +30,7 @@ export default async function MemberLayout({
   const notificationPreview = notifications.ok
     ? notifications.data
     : { rows: [], unread: 0 };
-  const isAdmin = viewer!.role === "admin";
+  const isAdmin = hasAdminRole(viewer!.role);
 
   return (
     <PortalShell isAdmin={isAdmin} notificationPreview={notificationPreview}>

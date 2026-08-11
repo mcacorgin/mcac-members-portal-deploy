@@ -127,7 +127,11 @@ export default async function ApplicationDetailPage({
               <div>
                 <dt className="text-xs text-ink-muted">Role</dt>
                 <dd className="text-ink">
-                  {record.role === "admin" ? "Administrator" : "Member"}
+                  {record.role === "superadmin"
+                    ? "Super administrator"
+                    : record.role === "admin"
+                      ? "Administrator"
+                      : "Member"}
                 </dd>
               </div>
               <div>

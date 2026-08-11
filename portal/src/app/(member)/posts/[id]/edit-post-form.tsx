@@ -2,7 +2,14 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import type { PostTypeName } from "@/lib/posts/types";
+import { type PostTypeName } from "@/lib/posts/types";
+import {
+  OPPORTUNITY_ROLE_OPTIONS,
+  isMandateOpportunityMetadata,
+  legacyOpportunityMetadataFromForm,
+  mandateOpportunityMetadataFromForm,
+  mandateOpportunityMetadataSchema,
+} from "@/lib/posts/opportunity";
 import {
   Button,
   Card,
@@ -12,6 +19,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { editPostAction } from "../actions";
+import { OpportunityFields } from "../../share/opportunity-fields";
 
 // HOME-02 edit control: collapsed behind "Edit post", prefilled from the
 // current post, submits through editPostAction. Field markup mirrors the
@@ -48,16 +56,17 @@ function text(formData: FormData, name: string): string {
 function buildMetadata(
   type: PostTypeName,
   formData: FormData,
+  isMandateOpportunity: boolean,
+  previousMetadata: Record<string, unknown>,
 ):
   | { metadata: Record<string, unknown> }
   | { fieldErrors: Record<string, string[]> } {
   switch (type) {
     case "opportunity":
       return {
-        metadata: {
-          industry: text(formData, "industry"),
-          requestedAction: text(formData, "requestedAction"),
-        },
+        metadata: isMandateOpportunity
+          ? mandateOpportunityMetadataFromForm(formData)
+          : legacyOpportunityMetadataFromForm(formData, previousMetadata),
       };
     case "job": {
       const industry = text(formData, "industry");
@@ -108,6 +117,8 @@ export function EditPostForm({
   );
   const [error, setError] = useState<string | null>(null);
   const errFor = (key: string): string | undefined => fieldErrors[key]?.[0];
+  const isMandateOpportunity =
+    type === "opportunity" && isMandateOpportunityMetadata(metadata);
 
   if (!open) {
     return (
@@ -125,11 +136,31 @@ export function EditPostForm({
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const built = buildMetadata(type, formData);
+    const built = buildMetadata(
+      type,
+      formData,
+      isMandateOpportunity,
+      metadata,
+    );
     if ("fieldErrors" in built) {
       setFieldErrors(built.fieldErrors);
       setError(null);
       return;
+    }
+    if (isMandateOpportunity) {
+      const parsed = mandateOpportunityMetadataSchema.safeParse(
+        built.metadata,
+      );
+      if (!parsed.success) {
+        const errors: Record<string, string[]> = {};
+        for (const issue of parsed.error.issues) {
+          const key = ["metadata", ...issue.path.map(String)].join(".");
+          (errors[key] ??= []).push(issue.message);
+        }
+        setFieldErrors(errors);
+        setError(null);
+        return;
+      }
     }
     setFieldErrors({});
     setError(null);
@@ -168,6 +199,15 @@ export function EditPostForm({
             aria-describedby={errFor("title") ? "edit-title-error" : undefined}
           />
         </FormField>
+
+        {isMandateOpportunity ? (
+          <OpportunityFields
+            disabled={pending}
+            fieldErrors={fieldErrors}
+            metadata={metadata}
+            prefix="edit"
+          />
+        ) : null}
 
         {type === "event" ? (
           <>
@@ -249,7 +289,7 @@ export function EditPostForm({
           </FormField>
         ) : null}
 
-        {type === "opportunity" || type === "job" ? (
+        {type === "job" || (type === "opportunity" && !isMandateOpportunity) ? (
           <FormField
             label={
               type === "opportunity"
@@ -269,6 +309,39 @@ export function EditPostForm({
                 errFor("metadata.industry") ? "edit-industry-error" : undefined
               }
             />
+          </FormField>
+        ) : null}
+
+        {type === "opportunity" ? (
+          <FormField
+            label="Your role in the opportunity (required)"
+            htmlFor="edit-opportunity-role"
+            error={errFor("metadata.roleInOpportunity")}
+          >
+            <Select
+              id="edit-opportunity-role"
+              name="roleInOpportunity"
+              defaultValue={str(metadata, "roleInOpportunity")}
+              required={isMandateOpportunity}
+              disabled={pending}
+              aria-invalid={
+                errFor("metadata.roleInOpportunity") ? "true" : undefined
+              }
+              aria-describedby={
+                errFor("metadata.roleInOpportunity")
+                  ? "edit-opportunity-role-error"
+                  : undefined
+              }
+            >
+              <option value="" disabled>
+                Select your role
+              </option>
+              {OPPORTUNITY_ROLE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
           </FormField>
         ) : null}
 
@@ -316,7 +389,7 @@ export function EditPostForm({
           />
         </FormField>
 
-        {type === "opportunity" ? (
+        {type === "opportunity" && !isMandateOpportunity ? (
           <FormField
             label="Action needed (required)"
             htmlFor="edit-requested-action"

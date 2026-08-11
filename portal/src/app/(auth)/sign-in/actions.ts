@@ -2,6 +2,7 @@
 
 import { AuthError, CredentialsSignin } from "next-auth";
 import { signIn } from "@/lib/auth";
+import { getCurrentNotice } from "@/lib/account/registration";
 
 export type SignInState = { error?: string; email?: string };
 
@@ -45,5 +46,10 @@ export async function signInWithEmail(
 
 /** LinkedIn OAuth entry; rendered only when the provider is configured. */
 export async function signInWithLinkedIn(): Promise<void> {
+  if (!(await getCurrentNotice())) {
+    throw new Error(
+      "Member registration is unavailable until MCAC publishes its privacy notice.",
+    );
+  }
   await signIn("linkedin", { redirectTo: "/" });
 }

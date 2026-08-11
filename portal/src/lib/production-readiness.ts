@@ -3,10 +3,13 @@ type Environment = Record<string, string | undefined>;
 const REQUIRED = [
   "AUTH_SECRET",
   "AUTH_URL",
+  "AUTH_LINKEDIN_ID",
+  "AUTH_LINKEDIN_SECRET",
   "RESEND_API_KEY",
   "EMAIL_FROM",
   "SUPABASE_URL",
-  "SUPABASE_STORAGE_BUCKET",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "SUPABASE_BUCKET",
 ] as const;
 
 export function productionConfigErrors(env: Environment): string[] {
@@ -18,9 +21,6 @@ export function productionConfigErrors(env: Environment): string[] {
 
   if (!usable(env.DATABASE_URL) || isLocalUrl(env.DATABASE_URL)) {
     errors.push("DATABASE_URL is missing or local");
-  }
-  if (!usable(env.SUPABASE_SECRET_KEY) && !usable(env.SUPABASE_SERVICE_ROLE_KEY)) {
-    errors.push("SUPABASE_SECRET_KEY is not configured");
   }
   if (env.STORAGE_DRIVER !== "supabase") {
     errors.push('STORAGE_DRIVER must be "supabase"');
@@ -42,6 +42,12 @@ export function productionConfigErrors(env: Environment): string[] {
   }
   if (env.MCAC_UI_PREVIEW === "1") {
     errors.push("MCAC_UI_PREVIEW must be disabled");
+  }
+  if (
+    usable(env.ATTACHMENT_RETENTION_MODE) &&
+    !["dry-run", "delete"].includes(env.ATTACHMENT_RETENTION_MODE!)
+  ) {
+    errors.push('ATTACHMENT_RETENTION_MODE must be "dry-run" or "delete"');
   }
 
   return [...new Set(errors)];

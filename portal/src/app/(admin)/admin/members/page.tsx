@@ -18,6 +18,7 @@ import { formatDate } from "../../format";
 import { SuspendButton } from "./suspend-button";
 import { UnlinkLinkedInButton } from "./unlink-linkedin-button";
 import { ModerationSection } from "./moderation";
+import { RoleControl } from "./role-control";
 
 export const metadata = { title: "Members - MCAC Members Portal" };
 
@@ -185,6 +186,8 @@ export default async function MembersPage({
                   const canSuspend =
                     row.status === "approved" && row.id !== viewer?.id;
                   const canUnlink = row.linkedInLinked;
+                  const canChangeRole =
+                    viewer?.role === "superadmin" && row.role !== "superadmin";
                   return (
                     <tr
                       key={row.id}
@@ -196,9 +199,9 @@ export default async function MembersPage({
                           className="flex min-h-tap items-center px-4 py-2.5 hover:underline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-navy"
                         >
                           {row.name || "Unnamed account"}
-                          {row.role === "admin" ? (
+                          {row.role !== "member" ? (
                             <span className="ml-2 rounded-full bg-navy-tint px-2 py-0.5 text-[11px] font-medium text-navy-text">
-                              Admin
+                              {row.role === "superadmin" ? "Super admin" : "Admin"}
                             </span>
                           ) : null}
                         </Link>
@@ -226,7 +229,14 @@ export default async function MembersPage({
                               name={row.name}
                             />
                           ) : null}
-                          {!canSuspend && !canUnlink ? (
+                          {canChangeRole ? (
+                            <RoleControl
+                              userId={row.id}
+                              name={row.name}
+                              role={row.role === "admin" ? "admin" : "member"}
+                            />
+                          ) : null}
+                          {!canSuspend && !canUnlink && !canChangeRole ? (
                             <span className="text-xs text-ink-muted">-</span>
                           ) : null}
                         </div>

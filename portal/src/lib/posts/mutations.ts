@@ -3,6 +3,7 @@ import { and, eq, inArray, lt } from "drizzle-orm";
 import { z } from "zod";
 import {
   adminAccessError,
+  hasAdminRole,
   memberAccessError,
   sectionEnabledFor,
   type Viewer,
@@ -19,6 +20,7 @@ import {
   type CreatePostInput,
   type UpdatePostInput,
 } from "./types";
+import { isMandateOpportunityMetadata } from "./opportunity";
 
 // Authorized writes for the posts kernel. Every function validates input,
 // fails closed via the central authz API, and keeps domain write + outbox
@@ -79,11 +81,14 @@ export async function createPost(
     }
   }
 
-  const expiresAt = capabilities.expiry
-    ? new Date(
-        Date.now() +
-          (await getConfig("posts.opportunityExpiryDays")) * 86400000,
-      )
+  const expiryDays =
+    type === "opportunity"
+      ? await getConfig("posts.opportunityExpiryDays")
+      : type === "job"
+        ? await getConfig("posts.jobExpiryDays")
+        : null;
+  const expiresAt = capabilities.expiry && expiryDays
+    ? new Date(Date.now() + expiryDays * 86400000)
     : null;
 
   const post = await db.transaction(async (tx) => {
@@ -236,7 +241,7 @@ export async function toggleBookmark(
     where: eq(tables.posts.id, postId),
     columns: { id: true, type: true, status: true },
   });
-  if (!post || (post.status === "removed" && v.role !== "admin")) {
+  if (!post || (post.status === "removed" && !hasAdminRole(v.role))) {
     return err("not_found", "Post not found.");
   }
   if (!(await sectionEnabledFor(post.type, v.id))) {
@@ -276,7 +281,7 @@ export async function deleteOwnComment(
     where: eq(tables.comments.id, commentId),
   });
   if (!comment || comment.deletedAt) return err("not_found", "Comment not found.");
-  if (comment.authorId !== v.id && v.role !== "admin") {
+  if (comment.authorId !== v.id && !hasAdminRole(v.role)) {
     return err("forbidden", "Only the comment author or an admin can delete this.");
   }
 
@@ -322,7 +327,7 @@ export async function updatePost(
         return err("not_found", "Post not found.");
       }
 
-      if (v.role !== "admin") {
+      if (!hasAdminRole(v.role)) {
         if (post.authorId !== v.id) {
           return err("forbidden", "Only the author or an admin can edit this post.");
         }
@@ -334,6 +339,17 @@ export async function updatePost(
       const meta = validateUpdatePostMetadata(post.type, metadata);
       if (!meta.ok) {
         return err("validation", "Check the highlighted fields.", meta.fieldErrors);
+      }
+      if (
+        post.type === "opportunity" &&
+        isMandateOpportunityMetadata(post.metadata as Record<string, unknown>) &&
+        !isMandateOpportunityMetadata(meta.metadata)
+      ) {
+        return err("validation", "Check the highlighted fields.", {
+          "metadata.mandateType": [
+            "A structured mandate must keep its opportunity type.",
+          ],
+        });
       }
 
       const [updated] = await tx
@@ -406,14 +422,40 @@ export async function removePost(
   return ok(undefined);
 }
 
-/** Flip expired active opportunities to "old". Called by a cron route. */
+export async function setPostRetentionExempt(
+  admin: Viewer | null,
+  postId: string,
+  exempt: boolean,
+): Promise<ActionResult<void>> {
+  const accessErr = adminAccessError(admin);
+  if (accessErr) return err(accessErr, "Only admins can change retention.");
+  const a = admin!;
+
+  const [updated] = await db
+    .update(tables.posts)
+    .set({ retentionExempt: exempt, updatedAt: new Date() })
+    .where(eq(tables.posts.id, postId))
+    .returning({ id: tables.posts.id });
+  if (!updated) return err("not_found", "Post not found.");
+
+  await recordAudit({
+    actorId: a.id,
+    action: "post.retention_exemption_set",
+    subjectType: "post",
+    subjectId: postId,
+    detail: { exempt },
+  });
+  return ok(undefined);
+}
+
+/** Archive expired active opportunities and jobs. Called by a cron route. */
 export async function runExpirySweep(): Promise<number> {
   const swept = await db
     .update(tables.posts)
     .set({ status: "old", updatedAt: new Date() })
     .where(
       and(
-        eq(tables.posts.type, "opportunity"),
+        inArray(tables.posts.type, ["opportunity", "job"]),
         eq(tables.posts.status, "active"),
         lt(tables.posts.expiresAt, new Date()),
       ),

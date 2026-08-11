@@ -1,4 +1,5 @@
-import { requireViewer } from "@/lib/auth";
+import { requireViewerFromRequest } from "@/lib/auth";
+import type { NextRequest } from "next/server";
 import { getAttachmentForDownload } from "@/lib/attachments";
 import type { ErrorCode } from "@/lib/contracts/result";
 
@@ -30,11 +31,11 @@ function contentDisposition(filename: string): string {
 }
 
 export async function GET(
-  _request: Request,
+  request: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params;
-  const viewer = await requireViewer();
+  const viewer = await requireViewerFromRequest(request);
 
   const result = await getAttachmentForDownload(viewer, id);
   if (!result.ok) {

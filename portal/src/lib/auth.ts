@@ -179,6 +179,12 @@ function requestSessionCookieName(request: NextRequest): string {
  * doubles as the encryption salt, so it is passed for both.
  */
 async function sessionUserId(request: NextRequest): Promise<string | null> {
+  return (await requestSessionIdentity(request))?.userId ?? null;
+}
+
+async function requestSessionIdentity(
+  request: NextRequest,
+): Promise<{ userId: string; issuedAt?: number } | null> {
   const cookieName = requestSessionCookieName(request);
   const token = await getToken({
     req: request,
@@ -186,7 +192,9 @@ async function sessionUserId(request: NextRequest): Promise<string | null> {
     salt: cookieName,
     cookieName,
   });
-  return token?.sub ?? null;
+  return token?.sub
+    ? { userId: token.sub, issuedAt: token.iat }
+    : null;
 }
 
 // Request-aware config: the signIn callback has to read the enrollment-intent
@@ -313,9 +321,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => {
 export async function requireViewer(): Promise<Viewer | null> {
   const session = await auth();
   if (!session?.user?.id) return null;
-  const issuedAt = (session as { issuedAt?: number }).issuedAt;
+  return freshViewer(
+    session.user.id,
+    (session as { issuedAt?: number }).issuedAt,
+  );
+}
+
+/** Route handlers have the request already, so decode it directly instead of
+ * relying on Next's ambient `headers()` request scope. */
+export async function requireViewerFromRequest(
+  request: NextRequest,
+): Promise<Viewer | null> {
+  const identity = await requestSessionIdentity(request);
+  if (!identity) return null;
+  return freshViewer(identity.userId, identity.issuedAt);
+}
+
+async function freshViewer(
+  userId: string,
+  issuedAt?: number,
+): Promise<Viewer | null> {
   const row = await db.query.users.findFirst({
-    where: eq(tables.users.id, session.user.id),
+    where: eq(tables.users.id, userId),
     columns: { credentialsChangedAt: true },
   });
   if (
@@ -326,5 +353,5 @@ export async function requireViewer(): Promise<Viewer | null> {
   ) {
     return null;
   }
-  return getViewer(session.user.id);
+  return getViewer(userId);
 }
