@@ -76,13 +76,17 @@ const SIGNED_URL_EXPIRY_SECONDS = 60;
 
 function supabaseDriver(): StorageDriver {
   const url = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey =
+    process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
     throw new Error(
-      "Supabase storage driver not configured: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY",
+      "Supabase storage driver not configured: set SUPABASE_URL and SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY)",
     );
   }
-  const bucket = process.env.SUPABASE_BUCKET ?? "attachments";
+  const bucket =
+    process.env.SUPABASE_STORAGE_BUCKET ??
+    process.env.SUPABASE_BUCKET ??
+    "attachments";
   const base = `${url.replace(/\/+$/, "")}/storage/v1`;
   const auth = { Authorization: `Bearer ${serviceKey}` };
 

@@ -13,7 +13,7 @@
     "package:godaddy": "bash scripts/package-godaddy.sh",
     "lint": "eslint",
     "db:push": "drizzle-kit push",
-    "test:unit": "tsx --test src/lib/attachments/retention.test.ts",
+    "test:unit": "tsx --test src/lib/attachments/retention.test.ts src/lib/production-readiness.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx --env-file=.env.local src/db/seed.ts",
