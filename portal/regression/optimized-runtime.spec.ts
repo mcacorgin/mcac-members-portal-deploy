@@ -19,6 +19,10 @@ test("optimized bundle serves public pages without browser errors", async ({
 
   await page.goto("/");
   await expect(page).toHaveTitle(/MCAC Members Portal/);
+  const response = await page.request.get("/");
+  expect(response.headers()["content-security-policy"]).toContain(
+    "frame-ancestors 'none'",
+  );
   await page.goto("/register");
   await expect(
     page.getByRole("heading", { name: "Start your application" }),
@@ -62,6 +66,9 @@ test("approved member can navigate the optimized member experience", async ({
     await expect(
       page.getByRole("heading", { name: heading, exact: true }),
     ).toBeVisible();
+    await expect(
+      page.locator("h1").filter({ hasText: heading }),
+    ).toHaveCount(1);
   }
 
   await expect(page.getByText("HOME-04", { exact: true })).toHaveCount(0);

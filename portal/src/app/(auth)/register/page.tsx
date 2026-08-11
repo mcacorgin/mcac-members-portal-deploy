@@ -27,8 +27,10 @@ export default async function RegisterPage() {
       <PageHeader
         title="Start your application"
         description={
-          linkedInConfigured
+          linkedInConfigured && emailSignInEnabled
             ? "Apply with LinkedIn, or create an account with email. You will read the privacy notice, choose contact visibility, and then wait for administrator review."
+            : linkedInConfigured
+              ? "Apply with LinkedIn. You will read the privacy notice, choose contact visibility, and then wait for administrator review."
             : "Create an account with email. You will read the privacy notice, choose contact visibility, and then wait for administrator review."
         }
         action={<ScreenId id="AUTH-01" />}
@@ -64,11 +66,7 @@ export default async function RegisterPage() {
             </div>
             <RegisterForm />
           </>
-          ) : (
-          <p className="rounded-control bg-surface-subtle px-3 py-2.5 text-sm text-ink-secondary">
-            Email registration is currently disabled by the administrators.
-          </p>
-          )}
+          ) : null}
           <p className="flex min-h-tap items-center gap-1 border-t border-border pt-4 text-sm text-ink-secondary">
             Already have an account?
             <Link href="/sign-in" className="font-medium text-navy-text">

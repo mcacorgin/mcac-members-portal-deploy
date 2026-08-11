@@ -17,6 +17,11 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 
   const viewer = await requireViewerFromRequest(request);
+  if (!viewer) {
+    const signIn = new URL("/sign-in", request.url);
+    signIn.searchParams.set("callbackUrl", `${url.pathname}${url.search}`);
+    return Response.redirect(signIn, 307);
+  }
 
   if (format === "csv") {
     const result = await exportMembersCsv(viewer);

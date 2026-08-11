@@ -23,6 +23,8 @@ import {
 import { TYPE_PLURAL_LABELS } from "../posts/display";
 import { FeedCard } from "../posts/feed-card";
 
+export const metadata = { title: "Home - MCAC Members Portal" };
+
 // HOME-01 - Home feed. View tabs, per-type filter chips (section-gated),
 // search, pagination. Rendered as a child of the (member) shell layout.
 

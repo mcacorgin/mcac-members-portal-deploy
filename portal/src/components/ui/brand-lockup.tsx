@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useId } from "react";
 import { cx } from "./cx";
 import mark from "../../../public/brand/mcac-mark.png";
 
@@ -11,6 +12,7 @@ export type BrandLockupProps = {
 };
 
 export function BrandMark({ className }: { className?: string }) {
+  const filterId = useId();
   return (
     <svg
       aria-hidden="true"
@@ -18,7 +20,7 @@ export function BrandMark({ className }: { className?: string }) {
       viewBox="0 0 216 312"
     >
       <filter
-        id="mcac-remove-raster-background"
+        id={filterId}
         colorInterpolationFilters="sRGB"
       >
         <feColorMatrix
@@ -36,7 +38,7 @@ export function BrandMark({ className }: { className?: string }) {
         <feComposite in="SourceGraphic" in2="mark-mask" operator="in" />
       </filter>
       <image
-        filter="url(#mcac-remove-raster-background)"
+        filter={`url(#${filterId})`}
         height="312"
         href={mark.src}
         width="216"
