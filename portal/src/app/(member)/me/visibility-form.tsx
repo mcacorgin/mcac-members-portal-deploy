@@ -42,7 +42,7 @@ export function VisibilityForm({
   defaults: {
     phone: VisibilityChoice;
     email: VisibilityChoice;
-    linkedin: VisibilityChoice;
+    professionalProfileVisibility: VisibilityChoice;
   };
 }) {
   const [state, formAction, pending] = useActionState<
@@ -88,7 +88,7 @@ export function VisibilityForm({
           <VisibilitySelect
             id="vis-linkedin"
             name="linkedin"
-            defaultValue={defaults.linkedin}
+            defaultValue={defaults.professionalProfileVisibility}
           />
         </FormField>
       </div>
