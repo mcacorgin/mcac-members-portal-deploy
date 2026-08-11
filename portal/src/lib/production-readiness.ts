@@ -3,8 +3,6 @@ type Environment = Record<string, string | undefined>;
 const REQUIRED = [
   "AUTH_SECRET",
   "AUTH_URL",
-  "AUTH_LINKEDIN_ID",
-  "AUTH_LINKEDIN_SECRET",
   "RESEND_API_KEY",
   "EMAIL_FROM",
   "SUPABASE_URL",
