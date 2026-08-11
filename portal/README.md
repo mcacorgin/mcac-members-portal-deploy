@@ -38,6 +38,8 @@ SELECT extname FROM pg_extension WHERE extname = 'pg_trgm';
 - `pnpm db:bootstrap` - idempotent production reference data and first administrator; never deletes data
 - `GET /api/jobs/run` - Vercel Cron sweep, authorized by `CRON_SECRET`
 - `POST /api/jobs/run` - external scheduler or administrator sweep, authorized by `JOBS_SECRET` or an admin session
+- `GET /api/jobs/retention` - daily attachment-retention sweep, authorized by `CRON_SECRET`
+- `POST /api/jobs/retention` - external daily retention sweep, authorized by `JOBS_SECRET`
 - `GET /api/health` - uncached database, production configuration, and reference-data readiness check
 
 ## Configuration
@@ -45,6 +47,12 @@ SELECT extname FROM pg_extension WHERE extname = 'pg_trgm';
 Pending client decisions are runtime config (Admin -> Policy, `app_config` table), never code: gold presence, email fallback, per-field contact defaults, opportunity expiry days, section toggles. See `src/lib/config.ts`.
 
 Environment: see `.env.example`. LinkedIn sign-in appears only when `AUTH_LINKEDIN_ID/SECRET` are set. Email uses the console in dev and Resend when `RESEND_API_KEY` is set. Attachments use local disk in dev and a private Supabase bucket when `STORAGE_DRIVER=supabase`.
+
+Attachment retention defaults to `ATTACHMENT_RETENTION_MODE=dry-run`. The
+daily retention endpoint reports files older than 60 days without deleting
+them. Set the Production value to `delete` only after MCAC approves the final
+privacy and retention notice. Deletion removes the private object but keeps
+the attachment metadata and an audit record; administrators can exempt a post.
 
 ### Release interface and rollback
 

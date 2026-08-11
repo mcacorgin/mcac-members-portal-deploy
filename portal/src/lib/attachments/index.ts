@@ -134,6 +134,9 @@ export async function getAttachmentForDownload(
   if (!(await sectionEnabledFor(row.postType, v.id))) {
     return err("section_disabled", "This section is not available.");
   }
+  if (row.attachment.purgedAt) {
+    return err("not_found", "This attachment expired after 60 days.");
+  }
 
   const driver = getStorageDriver();
   if (driver.getSignedUrl) {

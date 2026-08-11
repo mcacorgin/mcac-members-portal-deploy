@@ -59,8 +59,15 @@ export type CommentNode = {
 export type PostDetail = FeedItem & {
   // Only populated for admin viewers.
   removedReason: string | null;
+  retentionExempt: boolean;
   taggedMembers: { id: string; name: string }[];
-  attachments: { id: string; filename: string; mime: string; sizeBytes: number }[];
+  attachments: {
+    id: string;
+    filename: string;
+    mime: string;
+    sizeBytes: number;
+    purgedAt: Date | null;
+  }[];
   comments: CommentNode[];
 };
 
@@ -220,6 +227,7 @@ export async function getPostDetail(
       createdAt: tables.posts.createdAt,
       expiresAt: tables.posts.expiresAt,
       removedReason: tables.posts.removedReason,
+      retentionExempt: tables.posts.retentionExempt,
       lastEditedById: tables.posts.lastEditedById,
       lastEditedAt: tables.posts.lastEditedAt,
       authorId: tables.users.id,
@@ -255,6 +263,7 @@ export async function getPostDetail(
         filename: tables.attachments.filename,
         mime: tables.attachments.mime,
         sizeBytes: tables.attachments.sizeBytes,
+        purgedAt: tables.attachments.purgedAt,
       })
       .from(tables.attachments)
       .where(eq(tables.attachments.postId, postId))
@@ -304,6 +313,7 @@ export async function getPostDetail(
     createdAt: row.createdAt,
     expiresAt: row.expiresAt,
     removedReason: isAdmin ? row.removedReason : null,
+    retentionExempt: row.retentionExempt,
     author: { id: row.authorId, name: row.authorName, image: row.authorImage },
     commentCount: row.commentCount,
     bookmarked: row.bookmarked,

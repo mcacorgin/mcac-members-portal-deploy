@@ -27,6 +27,7 @@ import {
 import { BookmarkButton } from "../bookmark-button";
 import { CommentsSection } from "./comments";
 import { AdminRemoveControl } from "./admin-remove";
+import { AdminRetentionControl } from "./admin-retention-control";
 import { EditPostForm } from "./edit-post-form";
 import { PostVisual } from "../post-visual";
 
@@ -270,26 +271,45 @@ export default async function PostDetailPage({
             <ul className="grid gap-2">
               {post.attachments.map((attachment) => (
                 <li key={attachment.id}>
-                  <Link
-                    href={`/api/attachments/${attachment.id}`}
-                    prefetch={false}
-                    className="flex min-h-tap items-center gap-3 rounded-container border border-border bg-surface px-3.5 py-2.5 hover:bg-surface-subtle"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="grid size-9 flex-none place-items-center rounded-control bg-surface-subtle text-ink-secondary"
+                  {attachment.purgedAt ? (
+                    <div className="flex min-h-tap items-center gap-3 rounded-container border border-border bg-surface-subtle px-3.5 py-2.5">
+                      <span
+                        aria-hidden="true"
+                        className="grid size-9 flex-none place-items-center rounded-control bg-surface-subtle text-ink-secondary"
+                      >
+                        {"—"}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-ink">
+                          {attachment.filename}
+                        </span>
+                        <span className="block text-xs text-ink-muted">
+                          Attachment expired after 60 days
+                        </span>
+                      </span>
+                    </div>
+                  ) : (
+                    <Link
+                      href={`/api/attachments/${attachment.id}`}
+                      prefetch={false}
+                      className="flex min-h-tap items-center gap-3 rounded-container border border-border bg-surface px-3.5 py-2.5 hover:bg-surface-subtle"
                     >
-                      {"⤓"}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-ink">
-                        {attachment.filename}
+                      <span
+                        aria-hidden="true"
+                        className="grid size-9 flex-none place-items-center rounded-control bg-surface-subtle text-ink-secondary"
+                      >
+                        {"⤓"}
                       </span>
-                      <span className="block text-xs text-ink-muted">
-                        Protected attachment · {formatBytes(attachment.sizeBytes)}
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-ink">
+                          {attachment.filename}
+                        </span>
+                        <span className="block text-xs text-ink-muted">
+                          Protected attachment · {formatBytes(attachment.sizeBytes)}
+                        </span>
                       </span>
-                    </span>
-                  </Link>
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
@@ -303,6 +323,13 @@ export default async function PostDetailPage({
             title={post.title}
             body={post.body}
             metadata={post.metadata}
+          />
+        ) : null}
+
+        {isAdmin && post.attachments.length > 0 ? (
+          <AdminRetentionControl
+            postId={post.id}
+            exempt={post.retentionExempt}
           />
         ) : null}
 

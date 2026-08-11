@@ -43,6 +43,12 @@ export function productionConfigErrors(env: Environment): string[] {
   if (env.MCAC_UI_PREVIEW === "1") {
     errors.push("MCAC_UI_PREVIEW must be disabled");
   }
+  if (
+    usable(env.ATTACHMENT_RETENTION_MODE) &&
+    !["dry-run", "delete"].includes(env.ATTACHMENT_RETENTION_MODE!)
+  ) {
+    errors.push('ATTACHMENT_RETENTION_MODE must be "dry-run" or "delete"');
+  }
 
   return [...new Set(errors)];
 }
