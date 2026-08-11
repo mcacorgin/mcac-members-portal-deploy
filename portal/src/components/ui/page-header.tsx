@@ -20,9 +20,9 @@ export function PageHeader({
     <div className={cx("ui-page-header mb-5", className)}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="ui-page-title text-[22px] font-semibold text-balance text-ink">
+          <h1 className="ui-page-title text-[22px] font-semibold text-balance text-ink">
             {title}
-          </h2>
+          </h1>
           {description ? (
             <p className="ui-page-description mt-1.5 max-w-[60ch] text-pretty text-ink-secondary">
               {description}

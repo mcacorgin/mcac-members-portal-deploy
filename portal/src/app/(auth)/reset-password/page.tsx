@@ -1,4 +1,6 @@
 import { Button, Card, ErrorState, PageHeader, ScreenId } from "@/components/ui";
+import { redirect } from "next/navigation";
+import { getConfig } from "@/lib/config";
 import { ResetPasswordForm } from "./reset-password-form";
 
 export const metadata = { title: "Reset password - MCAC Members Portal" };
@@ -8,6 +10,7 @@ export default async function ResetPasswordPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  if (!(await getConfig("auth.emailFallbackEnabled"))) redirect("/sign-in");
   const params = await searchParams;
   const email = typeof params.email === "string" ? params.email : "";
   const token = typeof params.token === "string" ? params.token : "";

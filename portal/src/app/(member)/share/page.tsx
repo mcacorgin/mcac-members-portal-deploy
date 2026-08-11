@@ -9,6 +9,8 @@ import {
 import { Button, ErrorState, PageHeader, ScreenId } from "@/components/ui";
 import { Composer } from "./composer";
 
+export const metadata = { title: "Share - MCAC Members Portal" };
+
 // SHARE-01 - composer for every post type whose section is enabled for the
 // viewer. Rendered as a child of the (member) shell layout.
 

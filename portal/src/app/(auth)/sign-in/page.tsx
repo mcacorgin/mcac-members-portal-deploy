@@ -84,11 +84,7 @@ export default async function SignInPage({
             </div>
             <SignInForm />
           </>
-        ) : (
-          <p className="rounded-control bg-surface-subtle px-3 py-2.5 text-sm text-ink-secondary">
-            Email sign-in is currently disabled by the administrators.
-          </p>
-        )}
+        ) : null}
         <div className="grid gap-1 border-t border-border pt-4 text-sm">
           {emailSignInEnabled ? (
             <Link

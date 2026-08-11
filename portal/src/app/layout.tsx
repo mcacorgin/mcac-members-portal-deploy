@@ -6,6 +6,7 @@ import {
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://mcac.org.in"),
   title: "MCAC Members Portal",
   description:
     "Marathi Corporate Advisory Collective - private members network",

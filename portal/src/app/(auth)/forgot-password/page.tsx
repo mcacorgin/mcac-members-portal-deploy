@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Card, PageHeader, ScreenId } from "@/components/ui";
+import { getConfig } from "@/lib/config";
 import { ForgotPasswordForm } from "./forgot-password-form";
 
 export const metadata = { title: "Forgot password - MCAC Members Portal" };
 
-export default function ForgotPasswordPage() {
+export default async function ForgotPasswordPage() {
+  if (!(await getConfig("auth.emailFallbackEnabled"))) redirect("/sign-in");
   return (
     <div className="grid gap-4">
       <PageHeader

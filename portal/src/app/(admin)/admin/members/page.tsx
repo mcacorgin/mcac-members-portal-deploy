@@ -165,6 +165,9 @@ export default async function MembersPage({
         />
       ) : (
         <>
+          <p className="mb-2 text-xs text-ink-muted sm:hidden">
+            Swipe horizontally to see every member column.
+          </p>
           <Card className="overflow-x-auto p-0">
             <table className="w-full min-w-[760px] border-collapse text-sm">
               <thead>

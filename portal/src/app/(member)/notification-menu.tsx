@@ -61,7 +61,7 @@ export function NotificationMenu({
           unread > 0 ? `Notifications, ${unread} unread` : "Notifications"
         }
         aria-expanded={open}
-        aria-controls="recent-notifications"
+        aria-controls={open ? "recent-notifications" : undefined}
         onClick={() => setOpen((current) => !current)}
         className="relative grid size-tap cursor-pointer place-items-center rounded-control border border-border text-lg text-ink-secondary hover:bg-surface-subtle"
       >

@@ -1,6 +1,7 @@
 "use server";
 
 import { resetPassword } from "@/lib/account/registration";
+import { getConfig } from "@/lib/config";
 
 export type ResetPasswordState = {
   done?: boolean;
@@ -12,6 +13,9 @@ export async function resetPasswordAction(
   _prev: ResetPasswordState,
   formData: FormData,
 ): Promise<ResetPasswordState> {
+  if (!(await getConfig("auth.emailFallbackEnabled"))) {
+    return { error: "Password sign-in is not available." };
+  }
   const result = await resetPassword({
     email: String(formData.get("email") ?? ""),
     token: String(formData.get("token") ?? ""),

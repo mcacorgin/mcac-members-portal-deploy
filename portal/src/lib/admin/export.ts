@@ -1,4 +1,3 @@
-import ExcelJS from "exceljs";
 import { asc, eq } from "drizzle-orm";
 import { db, tables } from "@/db";
 import { adminAccessError, type Viewer } from "@/lib/authz";
@@ -111,6 +110,10 @@ export async function exportMembersXlsx(
   const denied = adminAccessError(admin);
   if (denied) return err(denied, "Administrator access is required.");
   const rows = await exportRows();
+  // ExcelJS pulls in Node-only ZIP adapters. Load it only after authorization
+  // and only for an Excel request so CSV and signed-out requests cannot fail
+  // while evaluating the route module in a serverless runtime.
+  const ExcelJS = (await import("exceljs")).default;
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Members");
   sheet.addRow([...HEADERS]);
