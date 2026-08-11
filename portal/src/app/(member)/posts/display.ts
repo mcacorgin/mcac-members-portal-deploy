@@ -1,4 +1,12 @@
 import type { PostTypeName } from "@/lib/posts/types";
+import {
+  MANDATE_BASIS_LABELS,
+  MANDATE_TYPE_LABELS,
+  OPPORTUNITY_ROLE_LABELS,
+  isMandateOpportunityMetadata,
+  type OpportunityMandateType,
+  type OpportunityRole,
+} from "@/lib/posts/opportunity";
 import { SECTION_LABELS } from "@/lib/notifications/section-labels";
 
 // Presentation helpers shared by HOME-01 feed cards and HOME-02 detail.
@@ -65,6 +73,19 @@ function str(metadata: Record<string, unknown>, key: string): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
+function num(metadata: Record<string, unknown>, key: string): number | null {
+  const value = metadata[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+export function formatMandateAmount(metadata: Record<string, unknown>): string | null {
+  const min = num(metadata, "amountMin");
+  const max = num(metadata, "amountMax");
+  const currency = str(metadata, "currency");
+  if (min === null || max === null || !currency) return null;
+  return `${currency} ${min.toLocaleString()}–${max.toLocaleString()}`;
+}
+
 export const EVENT_MODE_LABELS: Record<string, string> = {
   in_person: "In person",
   virtual: "Virtual",
@@ -82,9 +103,35 @@ export function metadataLine(
   const parts: string[] = [];
   switch (type) {
     case "opportunity": {
+      if (isMandateOpportunityMetadata(metadata)) {
+        const mandateType = str(metadata, "mandateType") as OpportunityMandateType;
+        const industry = str(metadata, "industry");
+        const geography = str(metadata, "geography");
+        const amount = formatMandateAmount(metadata);
+        const basis = str(metadata, "mandateBasis");
+        const role = str(metadata, "roleInOpportunity") as OpportunityRole | null;
+        parts.push(MANDATE_TYPE_LABELS[mandateType]);
+        if (industry) parts.push(industry);
+        if (geography) parts.push(geography);
+        if (amount) parts.push(amount);
+        if (basis) {
+          parts.push(
+            MANDATE_BASIS_LABELS[
+              basis as keyof typeof MANDATE_BASIS_LABELS
+            ] ?? basis,
+          );
+        }
+        if (role && OPPORTUNITY_ROLE_LABELS[role]) {
+          parts.push(OPPORTUNITY_ROLE_LABELS[role]);
+        }
+        break;
+      }
       const industry = str(metadata, "industry");
+      const role = str(metadata, "roleInOpportunity") as OpportunityRole | null;
       const action = str(metadata, "requestedAction");
       if (industry) parts.push(industry);
+      if (role && OPPORTUNITY_ROLE_LABELS[role])
+        parts.push(OPPORTUNITY_ROLE_LABELS[role]);
       if (action) parts.push(`Needs: ${action}`);
       break;
     }

@@ -1,7 +1,12 @@
 import { db, tables } from "@/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { memberAccessError, sectionEnabledFor, type Viewer } from "@/lib/authz";
+import {
+  hasAdminRole,
+  memberAccessError,
+  sectionEnabledFor,
+  type Viewer,
+} from "@/lib/authz";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
 import { TYPE_CONFIG } from "@/lib/posts/types";
 import { getStorageDriver, makeObjectKey } from "./storage";
@@ -66,10 +71,10 @@ export async function saveAttachment(
     where: eq(tables.posts.id, postId),
     columns: { id: true, type: true, status: true, authorId: true },
   });
-  if (!post || (post.status === "removed" && v.role !== "admin")) {
+  if (!post || (post.status === "removed" && !hasAdminRole(v.role))) {
     return err("not_found", "Post not found.");
   }
-  if (post.authorId !== v.id && v.role !== "admin") {
+  if (post.authorId !== v.id && !hasAdminRole(v.role)) {
     return err("forbidden", "Only the post author or an admin can attach files.");
   }
   if (!(await sectionEnabledFor(post.type, v.id))) {
@@ -128,11 +133,14 @@ export async function getAttachmentForDownload(
     .limit(1);
 
   if (!row) return err("not_found", "Attachment not found.");
-  if (row.postStatus === "removed" && v.role !== "admin") {
+  if (row.postStatus === "removed" && !hasAdminRole(v.role)) {
     return err("not_found", "Attachment not found.");
   }
   if (!(await sectionEnabledFor(row.postType, v.id))) {
     return err("section_disabled", "This section is not available.");
+  }
+  if (row.attachment.purgedAt) {
+    return err("not_found", "This attachment expired after 60 days.");
   }
 
   const driver = getStorageDriver();

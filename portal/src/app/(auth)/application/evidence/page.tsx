@@ -4,6 +4,7 @@ import { db, tables } from "@/db";
 import { requireViewer } from "@/lib/auth";
 import { getApplicationState } from "@/lib/account/registration";
 import { resolveLandingPath } from "@/lib/account/routing";
+import { groupExpertiseTags } from "@/lib/expertise-groups";
 import { Card, ErrorState, PageHeader, ScreenId } from "@/components/ui";
 import { EvidenceForm } from "./evidence-form";
 
@@ -47,6 +48,7 @@ export default async function EvidencePage() {
     db.query.expertiseTags.findMany({ orderBy: asc(tables.expertiseTags.label) }),
     getApplicationState(viewer),
   ]);
+  const { professions, verticals } = groupExpertiseTags(tags);
 
   return (
     <div className="grid gap-4">
@@ -69,7 +71,8 @@ export default async function EvidencePage() {
             </p>
           ) : null}
           <EvidenceForm
-            tags={tags}
+            professionTags={professions}
+            verticalTags={verticals}
             defaults={{
               name: user.name,
               city: profile?.city,

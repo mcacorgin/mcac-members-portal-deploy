@@ -1,5 +1,5 @@
 export { Avatar, type AvatarProps, type AvatarSize } from "./avatar";
-export { BrandLockup, type BrandLockupProps } from "./brand-lockup";
+export { BrandLockup, BrandMark, type BrandLockupProps } from "./brand-lockup";
 export {
   Button,
   type ButtonProps,

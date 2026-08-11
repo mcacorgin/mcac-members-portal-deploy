@@ -8,7 +8,13 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import type { PostTypeName } from "@/lib/posts/types";
+import { type PostTypeName } from "@/lib/posts/types";
+import {
+  OPPORTUNITY_ROLE_OPTIONS,
+  mandateOpportunityMetadataFromForm,
+  mandateOpportunityMetadataSchema,
+} from "@/lib/posts/opportunity";
+import { OpportunityFields } from "./opportunity-fields";
 import {
   Button,
   FieldError,
@@ -17,8 +23,6 @@ import {
   Select,
   Tag,
   Textarea,
-  TypeIcon,
-  TYPE_ACCENT_FILL_CLASSES,
   cx,
 } from "@/components/ui";
 import { TYPE_LABELS, formatBytes } from "../posts/display";
@@ -36,6 +40,19 @@ export type ComposerProps = {
 };
 
 const MAX_TAGGED = 20;
+
+function mandateFieldErrors(formData: FormData): Record<string, string[]> {
+  const parsed = mandateOpportunityMetadataSchema.safeParse(
+    mandateOpportunityMetadataFromForm(formData),
+  );
+  if (parsed.success) return {};
+  const errors: Record<string, string[]> = {};
+  for (const issue of parsed.error.issues) {
+    const key = ["metadata", ...issue.path.map(String)].join(".");
+    (errors[key] ??= []).push(issue.message);
+  }
+  return errors;
+}
 
 function TagPicker({
   selected,
@@ -203,15 +220,28 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
   const [type, setType] = useState<PostTypeName | "">("");
   const [tagged, setTagged] = useState<MemberOption[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [clientFieldErrors, setClientFieldErrors] = useState<
+    Record<string, string[]>
+  >({});
 
-  const fieldErrors =
-    state.status === "error" ? (state.fieldErrors ?? {}) : {};
+  const fieldErrors = {
+    ...(state.status === "error" ? (state.fieldErrors ?? {}) : {}),
+    ...clientFieldErrors,
+  };
   const errFor = (key: string): string | undefined => fieldErrors[key]?.[0];
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (fileError) return;
     const formData = new FormData(event.currentTarget);
+    if (type === "opportunity") {
+      const errors = mandateFieldErrors(formData);
+      if (Object.keys(errors).length > 0) {
+        setClientFieldErrors(errors);
+        return;
+      }
+    }
+    setClientFieldErrors({});
     startTransition(() => dispatch(formData));
   }
 
@@ -232,19 +262,18 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
               onClick={() => setType(t)}
               disabled={pending}
               className={cx(
-                "inline-flex min-h-tap cursor-pointer items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors",
+                "inline-flex min-h-tap cursor-pointer items-center rounded-full border px-3.5 text-sm font-medium transition-colors",
                 type === t
-                  ? cx(TYPE_ACCENT_FILL_CLASSES[t], "text-white")
+                  ? "border-navy bg-navy text-white"
                   : "border-border-strong bg-surface text-ink-secondary hover:bg-surface-subtle",
               )}
             >
-              <TypeIcon type={t} />
               {TYPE_LABELS[t]}
             </button>
           ))}
         </div>
         <small className="text-xs text-ink-muted">
-          Choose the format that best matches what you want from the network.
+          Nothing is preselected. Only sections enabled for you are shown.
         </small>
         <FieldError>{errFor("type")}</FieldError>
         {type ? <input type="hidden" name="type" value={type} /> : null}
@@ -266,6 +295,14 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
               aria-describedby={errFor("title") ? "share-title-error" : undefined}
             />
           </FormField>
+
+          {type === "opportunity" ? (
+            <OpportunityFields
+              disabled={pending}
+              fieldErrors={fieldErrors}
+              prefix="share"
+            />
+          ) : null}
 
           {type === "event" ? (
             <>
@@ -341,13 +378,9 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
             </FormField>
           ) : null}
 
-          {type === "opportunity" || type === "job" ? (
+          {type === "job" ? (
             <FormField
-              label={
-                type === "opportunity"
-                  ? "Industry (required)"
-                  : "Industry (optional)"
-              }
+              label="Industry (optional)"
               htmlFor="share-industry"
               error={errFor("metadata.industry")}
             >
@@ -362,6 +395,39 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
                     : undefined
                 }
               />
+            </FormField>
+          ) : null}
+
+          {type === "opportunity" ? (
+            <FormField
+              label="Your role in the opportunity (required)"
+              htmlFor="share-opportunity-role"
+              error={errFor("metadata.roleInOpportunity")}
+            >
+              <Select
+                id="share-opportunity-role"
+                name="roleInOpportunity"
+                defaultValue=""
+                required
+                disabled={pending}
+                aria-invalid={
+                  errFor("metadata.roleInOpportunity") ? "true" : undefined
+                }
+                aria-describedby={
+                  errFor("metadata.roleInOpportunity")
+                    ? "share-opportunity-role-error"
+                    : undefined
+                }
+              >
+                <option value="" disabled>
+                  Select your role
+                </option>
+                {OPPORTUNITY_ROLE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
             </FormField>
           ) : null}
 
@@ -409,30 +475,6 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
             />
           </FormField>
 
-          {type === "opportunity" ? (
-            <FormField
-              label="Action needed (required)"
-              htmlFor="share-requested-action"
-              hint="What do you need from the network?"
-              error={errFor("metadata.requestedAction")}
-            >
-              <Textarea
-                id="share-requested-action"
-                name="requestedAction"
-                rows={3}
-                disabled={pending}
-                aria-invalid={
-                  errFor("metadata.requestedAction") ? "true" : undefined
-                }
-                aria-describedby={
-                  errFor("metadata.requestedAction")
-                    ? "share-requested-action-error"
-                    : undefined
-                }
-              />
-            </FormField>
-          ) : null}
-
           <TagPicker selected={tagged} onChange={setTagged} disabled={pending} />
           <FieldError>{errFor("taggedUserIds")}</FieldError>
 
@@ -469,7 +511,7 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
         </>
       ) : (
         <p className="rounded-container border border-border bg-surface px-4 py-5 text-sm text-ink-secondary">
-          Choose a sharing type to see the relevant fields.
+          Choose a type to continue. Nothing is silently preselected.
         </p>
       )}
 
@@ -498,7 +540,8 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
           {pending ? "Publishing..." : "Publish"}
         </Button>
         <small className="text-xs text-ink-muted">
-          After publishing, you can edit the post from its detail page.
+          Phase 1 boundary: payment collection, automated WhatsApp messages,
+          and AI-assisted tagging are not part of sharing.
         </small>
       </div>
     </form>

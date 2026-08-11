@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db, tables } from "@/db";
 import { linkedInConfigured, requireViewer } from "@/lib/auth";
-import { memberAccessError } from "@/lib/authz";
+import { hasAdminRole, memberAccessError } from "@/lib/authz";
 import { isLinkedInLinked } from "@/lib/account/linked-accounts";
 // The codes, the copy and the /sign-in forwarding allowlist share one table so
 // they cannot drift apart.
@@ -95,7 +95,7 @@ export default async function MePage({
   const myTagLabels = allTags
     .filter((t) => myTagIds.includes(t.id))
     .map((t) => t.label);
-  const isAdmin = viewer.role === "admin";
+  const isAdmin = hasAdminRole(viewer.role);
   const summaryLine = [profile.city, profile.title, profile.company]
     .filter(Boolean)
     .join(" · ");

@@ -101,7 +101,7 @@ export default async function MeEditPage() {
           defaults={{
             phone: profile.phoneVisibility,
             email: profile.emailVisibility,
-            professionalProfileVisibility: profile.linkedinVisibility,
+            linkedin: profile.linkedinVisibility,
           }}
         />
       </Card>

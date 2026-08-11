@@ -1,7 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
-import { BrandLockup, Button } from "@/components/ui";
-import mark from "../../../public/brand/mcac-mark.png";
+import { BrandLockup, BrandMark, Button } from "@/components/ui";
 
 /**
  * Public landing page (signed-out view of "/").
@@ -82,22 +80,12 @@ export function LandingPage() {
       </header>
 
       <main id="main" className="flex-1">
-        {/* Hero. Typography carries it; the only visual is the real mark,
-            cropped against a pale navy field on wide screens. */}
+        {/* Hero. Typography carries it; the only visual is the real mark. */}
         <section
           aria-labelledby="hero-title"
           className="relative overflow-hidden border-b border-border"
         >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 right-0 hidden w-[28vw] bg-navy-tint lg:block"
-          />
-          <Image
-            src={mark}
-            alt=""
-            aria-hidden="true"
-            priority
-            sizes="256px"
+          <BrandMark
             className="pointer-events-none absolute top-1/2 right-12 hidden w-[16rem] max-w-none -translate-y-1/2 lg:block"
           />
           <div

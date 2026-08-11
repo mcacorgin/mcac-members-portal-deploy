@@ -6,12 +6,18 @@ import { resolveLandingPath } from "@/lib/account/routing";
 import { listFeed, type FeedView } from "@/lib/posts/queries";
 import { POST_TYPE_NAMES, type PostTypeName } from "@/lib/posts/types";
 import {
+  MANDATE_TYPE_LABELS,
+  OPPORTUNITY_MANDATE_TYPES,
+  type OpportunityMandateType,
+} from "@/lib/posts/opportunity";
+import {
   Button,
   EmptyState,
   ErrorState,
   Input,
   PageHeader,
   ScreenId,
+  Select,
   cx,
 } from "@/components/ui";
 import { TYPE_PLURAL_LABELS } from "../posts/display";
@@ -56,20 +62,25 @@ function feedHref(params: {
   view: FeedView;
   type?: PostTypeName;
   q?: string;
+  mandateType?: OpportunityMandateType;
+  industry?: string;
+  geography?: string;
   page?: number;
 }): string {
   const search = new URLSearchParams();
   if (params.view !== "active") search.set("view", params.view);
   if (params.type) search.set("type", params.type);
   if (params.q) search.set("q", params.q);
+  if (params.mandateType) search.set("mandateType", params.mandateType);
+  if (params.industry) search.set("industry", params.industry);
+  if (params.geography) search.set("geography", params.geography);
   if (params.page && params.page > 1) search.set("page", String(params.page));
   const qs = search.toString();
   return qs ? `/home?${qs}` : "/home";
 }
 
-function chipClass(active: boolean, kind: "view" | "type"): string {
+function chipClass(active: boolean): string {
   return cx(
-    kind === "view" ? "ui-view-chip" : "ui-type-chip",
     "inline-flex min-h-tap items-center rounded-full border px-3.5 text-sm font-medium transition-colors",
     active
       ? "border-navy bg-navy text-white"
@@ -98,6 +109,14 @@ export default async function HomePage({
     ? (typeParam as PostTypeName)
     : undefined;
   const q = first(sp.q)?.trim().slice(0, 200) || undefined;
+  const mandateRaw = first(sp.mandateType);
+  const mandateType = OPPORTUNITY_MANDATE_TYPES.includes(
+    mandateRaw as OpportunityMandateType,
+  )
+    ? (mandateRaw as OpportunityMandateType)
+    : undefined;
+  const industry = first(sp.industry)?.trim().slice(0, 160) || undefined;
+  const geography = first(sp.geography)?.trim().slice(0, 160) || undefined;
   const pageNum = Math.max(1, Number.parseInt(first(sp.page) ?? "1", 10) || 1);
 
   const enabledFlags = await Promise.all(
@@ -129,6 +148,9 @@ export default async function HomePage({
     view,
     type,
     search: q,
+    mandateType,
+    industry,
+    geography,
     page: pageNum,
   });
 
@@ -163,85 +185,77 @@ export default async function HomePage({
 
   const { items, page, pageSize, total } = result.data;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const filtered = Boolean(q || type);
-  const filterSummary = [
-    type ? TYPE_PLURAL_LABELS[type] : null,
-    q ? `"${q}"` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const filtered = Boolean(q || type || mandateType || industry || geography);
 
   return (
     <div className="mx-auto w-full max-w-3xl">
       {header}
 
-      <div className="ui-feed-toolbar">
-        <nav aria-label="Feed views" className="flex flex-wrap gap-2">
-          {VIEWS.map((v) => (
+      <nav aria-label="Feed views" className="mb-3 flex flex-wrap gap-2">
+        {VIEWS.map((v) => (
+          <Link
+            key={v.view}
+            href={feedHref({ view: v.view, type, q, mandateType, industry, geography })}
+            aria-current={view === v.view ? "page" : undefined}
+            className={chipClass(view === v.view)}
+          >
+            {v.label}
+          </Link>
+        ))}
+      </nav>
+
+      {enabledTypes.length > 1 ? (
+        <nav aria-label="Post types" className="mb-3 flex flex-wrap gap-2">
+          <Link
+            href={feedHref({ view, q, mandateType, industry, geography })}
+            aria-current={type === undefined ? "true" : undefined}
+            className={chipClass(type === undefined)}
+          >
+            All
+          </Link>
+          {enabledTypes.map((t) => (
             <Link
-              key={v.view}
-              href={feedHref({ view: v.view, type, q })}
-              aria-current={view === v.view ? "page" : undefined}
-              className={chipClass(view === v.view, "view")}
+              key={t}
+              href={feedHref({ view, type: t, q })}
+              aria-current={type === t ? "true" : undefined}
+              className={chipClass(type === t)}
             >
-              {v.label}
+              {TYPE_PLURAL_LABELS[t]}
             </Link>
           ))}
         </nav>
+      ) : null}
 
-        <details className="group mt-3" open={filtered}>
-          <summary className="flex min-h-tap cursor-pointer list-none items-center justify-between gap-3 border-t border-border pt-3 text-sm font-medium text-ink-secondary marker:hidden">
-            <span>Filter posts</span>
-            <span className="flex min-w-0 items-center gap-2 text-right text-xs text-ink-muted">
-              {filterSummary || "Type or keyword"}
-              <span
-                aria-hidden="true"
-                className="inline-block transition-transform group-open:rotate-180"
-              >
-                ↓
-              </span>
-            </span>
-          </summary>
-
-          <div className="mt-2 grid gap-3">
-            {enabledTypes.length > 1 ? (
-              <nav aria-label="Post types" className="flex flex-wrap gap-1">
-                <Link
-                  href={feedHref({ view, q })}
-                  aria-current={type === undefined ? "true" : undefined}
-                  className={chipClass(type === undefined, "type")}
-                >
-                  All
-                </Link>
-                {enabledTypes.map((t) => (
-                  <Link
-                    key={t}
-                    href={feedHref({ view, type: t, q })}
-                    aria-current={type === t ? "true" : undefined}
-                    className={chipClass(type === t, "type")}
-                  >
-                    {TYPE_PLURAL_LABELS[t]}
-                  </Link>
-                ))}
-              </nav>
-            ) : null}
-
-            <form action="/home" method="get" role="search">
-              {view !== "active" ? (
-                <input type="hidden" name="view" value={view} />
-              ) : null}
-              {type ? <input type="hidden" name="type" value={type} /> : null}
-              <Input
-                type="search"
-                name="q"
-                defaultValue={q ?? ""}
-                placeholder="Search posts"
-                aria-label="Search posts"
-              />
-            </form>
+      <form action="/home" method="get" role="search" className="mb-4 grid gap-3">
+        {view !== "active" ? (
+          <input type="hidden" name="view" value={view} />
+        ) : null}
+        {type ? <input type="hidden" name="type" value={type} /> : null}
+        <Input
+          type="search"
+          name="q"
+          defaultValue={q ?? ""}
+          placeholder="Search posts"
+          aria-label="Search posts"
+        />
+        {!type || type === "opportunity" ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Select name="mandateType" defaultValue={mandateType ?? ""} aria-label="Mandate type">
+              <option value="">All mandate types</option>
+              {OPPORTUNITY_MANDATE_TYPES.map((kind) => (
+                <option key={kind} value={kind}>
+                  {MANDATE_TYPE_LABELS[kind]}
+                </option>
+              ))}
+            </Select>
+            <Input name="industry" defaultValue={industry ?? ""} placeholder="Filter by industry" aria-label="Filter by industry" />
+            <Input name="geography" defaultValue={geography ?? ""} placeholder="Filter by geography" aria-label="Filter by geography" />
           </div>
-        </details>
-      </div>
+        ) : null}
+        <Button type="submit" variant="secondary" className="justify-self-start">
+          Apply filters
+        </Button>
+      </form>
 
       {items.length === 0 ? (
         filtered ? (
@@ -283,7 +297,7 @@ export default async function HomePage({
         <div className="mt-5 flex items-center justify-between gap-3">
           {page > 1 ? (
             <Button
-              href={feedHref({ view, type, q, page: page - 1 })}
+              href={feedHref({ view, type, q, mandateType, industry, geography, page: page - 1 })}
               variant="secondary"
             >
               Newer
@@ -296,7 +310,7 @@ export default async function HomePage({
           </span>
           {page < totalPages ? (
             <Button
-              href={feedHref({ view, type, q, page: page + 1 })}
+              href={feedHref({ view, type, q, mandateType, industry, geography, page: page + 1 })}
               variant="secondary"
             >
               Older

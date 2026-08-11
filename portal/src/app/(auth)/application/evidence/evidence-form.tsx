@@ -16,12 +16,14 @@ import { submitEvidenceAction, type EvidenceState } from "./actions";
 const initialState: EvidenceState = {};
 
 export function EvidenceForm({
-  tags,
+  professionTags,
+  verticalTags,
   defaults,
   identity,
   submitLabel = "Submit application",
 }: {
-  tags: { id: string; label: string }[];
+  professionTags: { id: string; label: string }[];
+  verticalTags: { id: string; label: string }[];
   defaults: Partial<EvidenceInput> & { tagIds?: string[] };
   identity: { name: string; email: string; image: string | null };
   submitLabel?: string;
@@ -98,12 +100,15 @@ export function EvidenceForm({
             aria-describedby={fieldErrors.phone ? "phone-error" : undefined}
           />
         </FormField>
-        <fieldset className="grid gap-1">
+        <fieldset className="grid gap-1.5">
           <legend className="mb-1.5 block text-[13px] font-medium text-ink">
-            Expertise - select at least one
+            Profession
           </legend>
-          <div className="grid gap-0.5 rounded-control border border-border-strong bg-surface px-3 py-1">
-            {tags.map((tag) => (
+          <p className="text-xs text-ink-muted">
+            Select the professional roles that best describe your work.
+          </p>
+          <div className="grid gap-0.5 rounded-control border border-border-strong bg-surface px-3 py-1 sm:grid-cols-2">
+            {professionTags.map((tag) => (
               <Checkbox
                 key={tag.id}
                 name="tagIds"
@@ -112,12 +117,45 @@ export function EvidenceForm({
                 defaultChecked={(values?.tagIds ?? defaults.tagIds)?.includes(
                   tag.id,
                 )}
+                aria-describedby={
+                  fieldErrors.tagIds ? "expertise-error" : undefined
+                }
                 className="py-1.5"
               />
             ))}
           </div>
-          <FieldError>{fieldErrors.tagIds?.[0]}</FieldError>
         </fieldset>
+        <fieldset className="grid gap-1.5">
+          <legend className="mb-1.5 block text-[13px] font-medium text-ink">
+            Verticals of interest
+          </legend>
+          <p className="text-xs text-ink-muted">
+            Select the industries and business areas you want to follow.
+          </p>
+          <div className="grid gap-0.5 rounded-control border border-border-strong bg-surface px-3 py-1 sm:grid-cols-2">
+            {verticalTags.map((tag) => (
+              <Checkbox
+                key={tag.id}
+                name="tagIds"
+                value={tag.id}
+                label={tag.label}
+                defaultChecked={(values?.tagIds ?? defaults.tagIds)?.includes(
+                  tag.id,
+                )}
+                aria-describedby={
+                  fieldErrors.tagIds ? "expertise-error" : undefined
+                }
+                className="py-1.5"
+              />
+            ))}
+          </div>
+        </fieldset>
+        <div>
+          <p className="text-xs text-ink-muted">
+            Select at least one option across these two panels.
+          </p>
+          <FieldError id="expertise-error">{fieldErrors.tagIds?.[0]}</FieldError>
+        </div>
         <FormField
           label="Company or practice"
           htmlFor="company"

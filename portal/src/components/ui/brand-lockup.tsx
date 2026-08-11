@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { cx } from "./cx";
 import mark from "../../../public/brand/mcac-mark.png";
@@ -10,6 +9,41 @@ export type BrandLockupProps = {
   href?: string;
   className?: string;
 };
+
+export function BrandMark({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      viewBox="0 0 216 312"
+    >
+      <filter
+        id="mcac-remove-raster-background"
+        colorInterpolationFilters="sRGB"
+      >
+        <feColorMatrix
+          in="SourceGraphic"
+          result="inverse-luminance"
+          type="matrix"
+          values="0 0 0 0 0
+                  0 0 0 0 0
+                  0 0 0 0 0
+                  -0.2126 -0.7152 -0.0722 0 1"
+        />
+        <feComponentTransfer in="inverse-luminance" result="mark-mask">
+          <feFuncA type="linear" slope="12" intercept="-1.2" />
+        </feComponentTransfer>
+        <feComposite in="SourceGraphic" in2="mark-mask" operator="in" />
+      </filter>
+      <image
+        filter="url(#mcac-remove-raster-background)"
+        height="312"
+        href={mark.src}
+        width="216"
+      />
+    </svg>
+  );
+}
 
 /**
  * MCAC brand lockup using the client-supplied mark (received 2026-07-23).
@@ -23,12 +57,7 @@ export function BrandLockup({
 }: BrandLockupProps) {
   const content = (
     <>
-      <Image
-        src={mark}
-        alt=""
-        className="h-9 w-auto flex-none"
-        priority
-      />
+      <BrandMark className="h-9 w-auto flex-none" />
       {!markOnly ? (
         <span className="min-w-0">
           <strong className="block truncate text-[14.5px] font-semibold text-ink">

@@ -12,7 +12,7 @@ export async function sendMail(mail: Mail): Promise<{ delivered: boolean }> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM ?? "MCAC Portal <onboarding@localhost>";
 
-  if (!apiKey) {
+  if (process.env.EMAIL_TRANSPORT === "console" || !apiKey) {
     if (process.env.NODE_ENV === "production") {
       console.error("[mail] RESEND_API_KEY is not configured");
       return { delivered: false };

@@ -37,6 +37,56 @@ const adminProfileSchema = z.object({
     .max(10),
 });
 
+const assignableRoleSchema = z.enum(["member", "admin"]);
+
+/** Superadmins may grant or revoke ordinary administrator access. */
+export async function setMemberRole(
+  actor: Viewer | null,
+  userId: string,
+  role: z.infer<typeof assignableRoleSchema>,
+): Promise<ActionResult> {
+  const denied = adminAccessError(actor);
+  if (denied || !actor || actor.role !== "superadmin") {
+    return err(
+      denied ?? "forbidden",
+      "Super administrator access is required.",
+    );
+  }
+  const parsed = assignableRoleSchema.safeParse(role);
+  if (!parsed.success) return err("validation", "Choose a valid role.");
+
+  const target = await db.query.users.findFirst({
+    where: eq(tables.users.id, userId),
+    columns: { id: true, role: true },
+  });
+  if (!target) return err("not_found", "Account not found.");
+  if (target.role === "superadmin") {
+    return err(
+      "forbidden",
+      "Super administrator accounts cannot be changed here.",
+    );
+  }
+  if (target.role === parsed.data) return ok(undefined);
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(tables.users)
+      .set({ role: parsed.data })
+      .where(eq(tables.users.id, userId));
+    await recordAudit(
+      {
+        actorId: actor.id,
+        action: "member.role_change",
+        subjectType: "user",
+        subjectId: userId,
+        detail: { from: target.role, to: parsed.data },
+      },
+      tx,
+    );
+  });
+  return ok(undefined);
+}
+
 export async function adminUpdateMemberProfile(
   admin: Viewer | null,
   userId: string,

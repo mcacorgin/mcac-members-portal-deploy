@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull, lt } from "drizzle-orm";
 import { db, tables } from "@/db";
 import { sendMail } from "@/lib/mail";
+import { hasAdminRole } from "@/lib/authz";
 import {
   enabledSectionsSentence,
   SECTION_LABELS,
@@ -119,7 +120,7 @@ async function emailFor(row: OutboxRow): Promise<{ to: string; subject: string; 
       // Re-check both role and status at send time: the recipient may have
       // been demoted or de-approved between the transaction that emitted
       // this event and delivery.
-      if (!u || u.role !== "admin" || u.status !== "approved") return [];
+      if (!u || !hasAdminRole(u.role) || u.status !== "approved") return [];
       const name =
         typeof p.applicantName === "string" && p.applicantName
           ? p.applicantName

@@ -17,6 +17,13 @@ export default async function PrivacyPage() {
     redirect(await resolveLandingPath(viewer));
 
   const notice = await getCurrentNotice();
+  const isInterim = Boolean(
+    notice && /INTERIM PRIVACY DISCLOSURE/i.test(notice.body),
+  );
+  const isDraft = Boolean(
+    notice &&
+      /DRAFT|PENDING LEGAL REVIEW|\[[^\]]*CONFIRM[^\]]*\]/i.test(notice.body),
+  );
 
   return (
     <div className="grid gap-4">
@@ -29,14 +36,18 @@ export default async function PrivacyPage() {
       {!notice ? (
         <ErrorState
           title="Privacy notice unavailable"
-          body="Acceptance is disabled because the current notice could not be loaded. No acceptance has been recorded; try again shortly."
+          body="MCAC is finalizing its privacy notice. Acceptance and member registration are disabled, and no acceptance has been recorded. Contact admin@mcac.org.in for more information."
         />
       ) : (
         <>
           <Card className="grid gap-4 p-5">
-            <span className="inline-flex min-h-6 w-fit items-center rounded-full bg-danger-bg px-2.5 py-0.5 text-xs font-semibold tracking-wide text-danger">
-              DRAFT - PENDING LEGAL REVIEW
-            </span>
+            {isInterim || isDraft ? (
+              <span className="inline-flex min-h-6 w-fit items-center rounded-full bg-danger-bg px-2.5 py-0.5 text-xs font-semibold tracking-wide text-danger">
+                {isInterim
+                  ? "INTERIM - FINAL NOTICE PENDING"
+                  : "DRAFT - PENDING LEGAL REVIEW"}
+              </span>
+            ) : null}
             <div className="whitespace-pre-line text-[15px] leading-relaxed text-ink">
               {notice.body}
             </div>

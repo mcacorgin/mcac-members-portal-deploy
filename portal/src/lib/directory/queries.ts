@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { db, tables } from "@/db";
 import {
+  hasAdminRole,
   memberAccessError,
   projectContact,
   type ProjectedContact,
@@ -268,7 +269,7 @@ export async function getMemberProfile(
     .limit(1);
   const member = row[0];
   const isSelf = viewer!.id === memberId;
-  const isAdmin = viewer!.role === "admin";
+  const isAdmin = hasAdminRole(viewer!.role);
   if (!member || (member.status !== "approved" && !isSelf && !isAdmin))
     return err("not_found", "This member profile is not available.");
 

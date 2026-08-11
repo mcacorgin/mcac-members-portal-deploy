@@ -76,23 +76,15 @@ const SIGNED_URL_EXPIRY_SECONDS = 60;
 
 function supabaseDriver(): StorageDriver {
   const url = process.env.SUPABASE_URL;
-  const secretKey = process.env.SUPABASE_SECRET_KEY?.trim();
-  const legacyServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  const apiKey = secretKey || legacyServiceRoleKey;
-  if (!url || !apiKey) {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
     throw new Error(
-      "Supabase storage driver not configured: set SUPABASE_URL and SUPABASE_SECRET_KEY",
+      "Supabase storage driver not configured: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY",
     );
   }
-  const bucket = process.env.SUPABASE_STORAGE_BUCKET ?? "attachments";
+  const bucket = process.env.SUPABASE_BUCKET ?? "attachments";
   const base = `${url.replace(/\/+$/, "")}/storage/v1`;
-  const auth: Record<string, string> = { apikey: apiKey };
-
-  // New sb_secret_ keys are accepted only through the apikey header. Keep the
-  // bearer header solely for legacy service_role JWTs during migration.
-  if (!secretKey && legacyServiceRoleKey) {
-    auth.Authorization = `Bearer ${legacyServiceRoleKey}`;
-  }
+  const auth = { Authorization: `Bearer ${serviceKey}` };
 
   return {
     async put(key, bytes, mime) {

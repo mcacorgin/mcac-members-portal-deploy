@@ -25,6 +25,11 @@ export async function registerWithEmail(
 ): Promise<ActionResult<{ userId: string }>> {
   if (!(await getConfig("auth.emailFallbackEnabled")))
     return err("forbidden", "Email registration is not available.");
+  if (!(await getCurrentNotice()))
+    return err(
+      "forbidden",
+      "Member registration is unavailable until MCAC publishes its privacy notice.",
+    );
 
   const parsed = registerSchema.safeParse(input);
   if (!parsed.success)
@@ -373,7 +378,12 @@ export async function submitApplicationEvidence(
       const admins = await tx
         .select({ id: tables.users.id })
         .from(tables.users)
-        .where(and(eq(tables.users.role, "admin"), eq(tables.users.status, "approved")));
+        .where(
+          and(
+            inArray(tables.users.role, ["admin", "superadmin"]),
+            eq(tables.users.status, "approved"),
+          ),
+        );
       const recipients = admins.filter((a) => a.id !== viewer.id);
       if (recipients.length) {
         await tx.insert(tables.notifications).values(

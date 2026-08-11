@@ -103,7 +103,7 @@ export async function getApplicationDetail(
     id: string;
     name: string;
     email: string;
-    role: "member" | "admin";
+    role: Viewer["role"];
     status: Viewer["status"];
     statusReason: string | null;
     statusChangedAt: Date | null;
@@ -203,7 +203,7 @@ export async function listMembersAdmin(
       name: string;
       email: string;
       status: Viewer["status"];
-      role: string;
+      role: Viewer["role"];
       city: string;
       createdAt: Date;
       linkedInLinked: boolean;

@@ -3,6 +3,7 @@ import { and, desc, eq, asc, inArray, count, or, ilike, sql, type SQL } from "dr
 import { z } from "zod";
 import {
   enabledSections,
+  hasAdminRole,
   memberAccessError,
   sectionEnabledFor,
   type Viewer,
@@ -10,6 +11,7 @@ import {
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
 import { escapeLike } from "@/lib/sql-text";
 import { POST_TYPE_NAMES, type PostTypeName } from "./types";
+import { OPPORTUNITY_MANDATE_TYPES, type OpportunityMandateType } from "./opportunity";
 
 // Authorized reads for the posts kernel. Every function fails closed via
 // memberAccessError and section gating (permission matrix `yes*` rows).
@@ -59,8 +61,15 @@ export type CommentNode = {
 export type PostDetail = FeedItem & {
   // Only populated for admin viewers.
   removedReason: string | null;
+  retentionExempt: boolean;
   taggedMembers: { id: string; name: string }[];
-  attachments: { id: string; filename: string; mime: string; sizeBytes: number }[];
+  attachments: {
+    id: string;
+    filename: string;
+    mime: string;
+    sizeBytes: number;
+    purgedAt: Date | null;
+  }[];
   comments: CommentNode[];
 };
 
@@ -72,6 +81,9 @@ const feedOptionsSchema = z.object({
   view: z.enum(["active", "tagged", "old", "mine"]),
   type: z.enum(POST_TYPE_NAMES).optional(),
   search: z.string().max(200).optional(),
+  mandateType: z.enum(OPPORTUNITY_MANDATE_TYPES).optional(),
+  industry: z.string().max(160).optional(),
+  geography: z.string().max(160).optional(),
   page: z.number().int().min(1).optional(),
   pageSize: z.number().int().min(1).max(100).optional(),
 });
@@ -90,6 +102,9 @@ export async function listFeed(
     view: FeedView;
     type?: PostTypeName;
     search?: string;
+    mandateType?: OpportunityMandateType;
+    industry?: string;
+    geography?: string;
     page?: number;
     pageSize?: number;
   },
@@ -102,7 +117,16 @@ export async function listFeed(
   if (!parsedOpts.success) {
     return err("validation", "Invalid feed options.");
   }
-  const { view, type, search: rawSearch, page = 1, pageSize = DEFAULT_PAGE_SIZE } =
+  const {
+    view,
+    type,
+    search: rawSearch,
+    mandateType,
+    industry: rawIndustry,
+    geography: rawGeography,
+    page = 1,
+    pageSize = DEFAULT_PAGE_SIZE,
+  } =
     parsedOpts.data;
 
   const conds: SQL[] = [];
@@ -119,7 +143,7 @@ export async function listFeed(
     }
   }
 
-  const isAdmin = v.role === "admin";
+  const isAdmin = hasAdminRole(v.role);
   switch (view) {
     case "active":
       conds.push(eq(tables.posts.status, "active"));
@@ -144,6 +168,28 @@ export async function listFeed(
     const pattern = `%${escapeLike(search)}%`;
     conds.push(
       or(ilike(tables.posts.title, pattern), ilike(tables.posts.body, pattern))!,
+    );
+  }
+
+  // Mandate metadata is additive JSONB data. The feed keeps generic legacy
+  // opportunities visible unless the member explicitly applies a mandate
+  // filter, in which case only structured opportunity posts can match.
+  if (mandateType || rawIndustry?.trim() || rawGeography?.trim()) {
+    conds.push(eq(tables.posts.type, "opportunity"));
+  }
+  if (mandateType) {
+    conds.push(sql`${tables.posts.metadata} ->> 'mandateType' = ${mandateType}`);
+  }
+  const industry = rawIndustry?.trim();
+  if (industry) {
+    conds.push(
+      ilike(sql<string>`${tables.posts.metadata} ->> 'industry'`, `%${escapeLike(industry)}%`),
+    );
+  }
+  const geography = rawGeography?.trim();
+  if (geography) {
+    conds.push(
+      ilike(sql<string>`${tables.posts.metadata} ->> 'geography'`, `%${escapeLike(geography)}%`),
     );
   }
 
@@ -207,7 +253,7 @@ export async function getPostDetail(
   const accessErr = memberAccessError(viewer);
   if (accessErr) return err(accessErr, "You cannot view member posts.");
   const v = viewer!;
-  const isAdmin = v.role === "admin";
+  const isAdmin = hasAdminRole(v.role);
 
   const [row] = await db
     .select({
@@ -220,6 +266,7 @@ export async function getPostDetail(
       createdAt: tables.posts.createdAt,
       expiresAt: tables.posts.expiresAt,
       removedReason: tables.posts.removedReason,
+      retentionExempt: tables.posts.retentionExempt,
       lastEditedById: tables.posts.lastEditedById,
       lastEditedAt: tables.posts.lastEditedAt,
       authorId: tables.users.id,
@@ -255,6 +302,7 @@ export async function getPostDetail(
         filename: tables.attachments.filename,
         mime: tables.attachments.mime,
         sizeBytes: tables.attachments.sizeBytes,
+        purgedAt: tables.attachments.purgedAt,
       })
       .from(tables.attachments)
       .where(eq(tables.attachments.postId, postId))
@@ -304,6 +352,7 @@ export async function getPostDetail(
     createdAt: row.createdAt,
     expiresAt: row.expiresAt,
     removedReason: isAdmin ? row.removedReason : null,
+    retentionExempt: row.retentionExempt,
     author: { id: row.authorId, name: row.authorName, image: row.authorImage },
     commentCount: row.commentCount,
     bookmarked: row.bookmarked,
@@ -330,7 +379,7 @@ export async function listSaved(
   if (enabled.length < POST_TYPE_NAMES.length) {
     conds.push(inArray(tables.posts.type, enabled));
   }
-  if (v.role !== "admin") {
+  if (!hasAdminRole(v.role)) {
     conds.push(sql`${tables.posts.status} <> 'removed'`);
   }
 
