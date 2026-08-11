@@ -59,7 +59,6 @@ export default async function MePage({
 
   const { linkError } = await searchParams;
   const linkErrorCode = Array.isArray(linkError) ? linkError[0] : linkError;
-  const errorMessage = linkErrorCode ? linkErrorMessage(linkErrorCode) : null;
 
   const [profile, myTagRows, filtersRes, linkedIn] = await Promise.all([
     db.query.profiles.findFirst({
@@ -71,6 +70,12 @@ export default async function MePage({
     getDirectoryFilters(viewer),
     isLinkedInLinked(viewer.id),
   ]);
+
+  // OAuth providers can return a stale error parameter after the account was
+  // already linked successfully. The stored account link is authoritative;
+  // do not show a failure banner for a connection that exists.
+  const errorMessage =
+    !linkedIn && linkErrorCode ? linkErrorMessage(linkErrorCode) : null;
 
   if (!profile || !filtersRes.ok) {
     return (
@@ -226,11 +231,10 @@ export default async function MePage({
         <Card className="grid gap-3">
           <div>
             <h3 className="text-base font-semibold text-ink">
-              Sign in with LinkedIn
+              LinkedIn sign-in
             </h3>
             <p className="mt-0.5 text-[13px] text-ink-secondary">
-              Connect your LinkedIn account to sign in with it. Your email and
-              password keep working either way.
+              Connect LinkedIn to use it for future MCAC sign-ins.
             </p>
           </div>
           {linkedIn ? (
@@ -238,7 +242,7 @@ export default async function MePage({
               data-testid="linkedin-connected"
               className="rounded-control bg-surface-subtle px-3 py-2.5 text-sm font-medium text-ink"
             >
-              Connected. An administrator can disconnect it for you.
+              LinkedIn is connected to your MCAC account.
             </p>
           ) : (
             <ConnectLinkedInForm />

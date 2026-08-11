@@ -6,8 +6,13 @@ export type ScreenIdProps = {
   className?: string;
 };
 
-/** Small muted mono label. Every screen renders its stable ID with this. */
+/**
+ * Small implementation label for local review builds. Screen IDs are useful
+ * while matching routes to the specification, but are never customer-facing.
+ */
 export function ScreenId({ id, className }: ScreenIdProps) {
+  if (process.env.NODE_ENV === "production") return null;
+
   return (
     <span
       className={cx(

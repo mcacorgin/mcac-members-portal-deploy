@@ -27,6 +27,7 @@ test("optimized bundle serves public pages without browser errors", async ({
   await expect(
     page.getByRole("heading", { name: "Continue to MCAC" }),
   ).toBeVisible();
+  await expect(page.getByText("AUTH-01", { exact: true })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -62,6 +63,10 @@ test("approved member can navigate the optimized member experience", async ({
       page.getByRole("heading", { name: heading, exact: true }),
     ).toBeVisible();
   }
+
+  await expect(page.getByText("HOME-04", { exact: true })).toHaveCount(0);
+  await page.goto("/share");
+  await expect(page.getByText(/Phase 1 boundary/i)).toHaveCount(0);
 });
 
 test("opportunity Server Action persists the mandatory role in the optimized runtime", async ({
@@ -107,6 +112,11 @@ test("opportunity Server Action persists the mandatory role in the optimized run
     postId = page.url().split("/posts/")[1]?.split(/[?#]/)[0];
 
     await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Mandate details" }),
+    ).toBeVisible();
+    await expect(page.getByText("Sell-side mandate", { exact: true })).toBeVisible();
+    await expect(page.getByText("Regression testing", { exact: true })).toBeVisible();
     await expect(page.getByText("I have the mandate")).toBeVisible();
 
     const [row] = await sql<

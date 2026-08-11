@@ -37,7 +37,7 @@ export default async function PendingPage() {
     <div className="grid gap-4">
       <PageHeader
         title="Your application is with MCAC"
-        description="Wait for an administrator's recorded decision without entering the private network."
+        description="An administrator will review your application before you can access the member network."
         action={<ScreenId id="AUTH-05" />}
         className="mb-1"
       />
@@ -74,8 +74,7 @@ export default async function PendingPage() {
           </form>
         </div>
         <p className="border-t border-border pt-3 text-xs text-ink-muted">
-          Need help with your application? The MCAC help and request route is
-          pending client confirmation.
+          Need help with your application? Contact admin@mcac.org.in.
         </p>
       </Card>
     </div>

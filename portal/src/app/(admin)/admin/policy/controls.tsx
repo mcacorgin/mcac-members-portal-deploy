@@ -84,8 +84,7 @@ export function BrandControl({
         <SaveIndicator state={state} />
       </div>
       <p className="mb-2 text-sm text-ink-secondary">
-        Gold presence in the interface. Decision D3 - pending client
-        confirmation; the default stays restrained until the client decides.
+        Choose how prominently MCAC gold appears across the portal.
       </p>
       <div role="radiogroup" aria-label="Gold presence">
         {(

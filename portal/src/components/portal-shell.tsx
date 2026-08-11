@@ -29,11 +29,13 @@ export function PortalShell({
           <BrandLockup href="/" />
         </div>
         <MemberRailNav isAdmin={isAdmin} />
-        <p className="ui-internal-scaffold mt-auto border-t border-border px-2 pt-2.5 text-[11px] text-ink-muted">
-          Phase 1 member shell
-          <br />
-          Home · People · Share · Me
-        </p>
+        {process.env.NODE_ENV !== "production" ? (
+          <p className="ui-internal-scaffold mt-auto border-t border-border px-2 pt-2.5 text-[11px] text-ink-muted">
+            Member navigation review
+            <br />
+            Home · People · Share · Me
+          </p>
+        ) : null}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">

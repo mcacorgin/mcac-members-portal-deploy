@@ -171,7 +171,7 @@ export default async function PostDetailPage({
         {result.code === "section_disabled" ? (
           <ErrorState
             title="This section is not available"
-            body="This post's section is hidden by your effective section settings. Other posts remain available."
+            body="An administrator has disabled this post type for your account. Other posts remain available."
             action={
               <Button href="/home" variant="secondary">
                 Back to Home
@@ -196,6 +196,8 @@ export default async function PostDetailPage({
   const post = result.data;
   const isAdmin = hasAdminRole(viewer!.role);
   const rows = metadataRows(post.type, post.metadata);
+  const structuredMandate =
+    post.type === "opportunity" && isMandateOpportunityMetadata(post.metadata);
   const remaining =
     post.status === "active" && post.type === "opportunity"
       ? daysLeft(post.expiresAt)
@@ -272,6 +274,11 @@ export default async function PostDetailPage({
 
         {rows.length > 0 ? (
           <Card>
+            {structuredMandate ? (
+              <h2 className="mb-3 text-sm font-semibold text-ink">
+                Mandate details
+              </h2>
+            ) : null}
             <dl className="grid gap-2.5 sm:grid-cols-2">
               {rows.map((row) => (
                 <div key={row.label}>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
-import { memberAccessError, sectionEnabledFor } from "@/lib/authz";
+import { enabledSections, memberAccessError } from "@/lib/authz";
 import { resolveLandingPath } from "@/lib/account/routing";
 import { listFeed, type FeedView } from "@/lib/posts/queries";
 import { POST_TYPE_NAMES, type PostTypeName } from "@/lib/posts/types";
@@ -119,10 +119,7 @@ export default async function HomePage({
   const geography = first(sp.geography)?.trim().slice(0, 160) || undefined;
   const pageNum = Math.max(1, Number.parseInt(first(sp.page) ?? "1", 10) || 1);
 
-  const enabledFlags = await Promise.all(
-    POST_TYPE_NAMES.map((t) => sectionEnabledFor(t, viewer!.id)),
-  );
-  const enabledTypes = POST_TYPE_NAMES.filter((_, i) => enabledFlags[i]);
+  const enabledTypes = await enabledSections(viewer!.id);
 
   const header = (
     <PageHeader
@@ -138,7 +135,7 @@ export default async function HomePage({
         {header}
         <ErrorState
           title="This section is not available"
-          body="Your effective section settings hide member posts. Other areas of the portal remain available."
+          body="An administrator has disabled member posts for your account. Other areas of the portal remain available."
         />
       </div>
     );
@@ -161,7 +158,7 @@ export default async function HomePage({
         {result.code === "section_disabled" ? (
           <ErrorState
             title="This section is not available"
-            body="Its filter and posts are hidden together by your effective section settings. Other posts remain available."
+            body="An administrator has disabled this post type for your account. Other posts remain available."
             action={
               <Button href={feedHref({ view, q })} variant="secondary">
                 Back to available posts

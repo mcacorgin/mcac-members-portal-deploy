@@ -63,8 +63,7 @@ export default async function StatusPage() {
             </p>
           ) : null}
           <p>
-            For questions about this decision, contact the MCAC office. The
-            client-owned contact route is pending confirmation.
+            For questions about this decision, contact admin@mcac.org.in.
           </p>
         </div>
       </>
@@ -83,8 +82,8 @@ export default async function StatusPage() {
           <p>
             Member access is closed while the account is suspended. A status
             reversal by an administrator routes you back to the correct account
-            state on your next visit. For assistance, contact the MCAC office;
-            the client-owned contact route is pending confirmation.
+            state on your next visit. For assistance, contact
+            admin@mcac.org.in.
           </p>
         </div>
       </>
@@ -94,7 +93,7 @@ export default async function StatusPage() {
     <div className="grid gap-4">
       <PageHeader
         title="Application status"
-        description="Your account's current standing, without exposing protected records."
+        description="Review the latest decision on your MCAC application."
         action={<ScreenId id="AUTH-06" />}
         className="mb-1"
       />

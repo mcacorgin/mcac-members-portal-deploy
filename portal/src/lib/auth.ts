@@ -1,4 +1,5 @@
 import NextAuth, { type NextAuthConfig } from "next-auth";
+import { cache } from "react";
 import { getToken } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
 import LinkedIn from "next-auth/providers/linkedin";
@@ -8,7 +9,7 @@ import bcrypt from "bcryptjs";
 import { db, tables } from "@/db";
 import { eq } from "drizzle-orm";
 import { getConfig } from "@/lib/config";
-import { getViewer, type Viewer } from "@/lib/authz";
+import type { Viewer } from "@/lib/authz";
 import {
   clearFailures,
   isLockedOut,
@@ -318,14 +319,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => {
  * action uses. Tokens issued before the user's last password reset are
  * rejected, so credential recovery revokes stolen sessions.
  */
-export async function requireViewer(): Promise<Viewer | null> {
+export const requireViewer = cache(async (): Promise<Viewer | null> => {
   const session = await auth();
   if (!session?.user?.id) return null;
   return freshViewer(
     session.user.id,
     (session as { issuedAt?: number }).issuedAt,
   );
-}
+});
 
 /** Route handlers have the request already, so decode it directly instead of
  * relying on Next's ambient `headers()` request scope. */
@@ -343,7 +344,14 @@ async function freshViewer(
 ): Promise<Viewer | null> {
   const row = await db.query.users.findFirst({
     where: eq(tables.users.id, userId),
-    columns: { credentialsChangedAt: true },
+    columns: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      status: true,
+      credentialsChangedAt: true,
+    },
   });
   if (
     row?.credentialsChangedAt &&
@@ -353,5 +361,12 @@ async function freshViewer(
   ) {
     return null;
   }
-  return getViewer(userId);
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: row.role,
+    status: row.status,
+  };
 }

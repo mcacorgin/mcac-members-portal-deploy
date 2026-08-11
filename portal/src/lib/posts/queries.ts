@@ -194,13 +194,13 @@ export async function listFeed(
   }
 
   const where = and(...conds);
-  const [{ total }] = await db
-    .select({ total: count() })
-    .from(tables.posts)
-    .where(where);
-
-  const rows = await db
-    .select({
+  const [[{ total }], rows] = await Promise.all([
+    db
+      .select({ total: count() })
+      .from(tables.posts)
+      .where(where),
+    db
+      .select({
       id: tables.posts.id,
       type: tables.posts.type,
       title: tables.posts.title,
@@ -215,13 +215,14 @@ export async function listFeed(
       authorName: tables.users.name,
       authorImage: tables.users.image,
       ...viewerFlags(v.id),
-    })
-    .from(tables.posts)
-    .innerJoin(tables.users, eq(tables.posts.authorId, tables.users.id))
-    .where(where)
-    .orderBy(desc(tables.posts.createdAt), desc(tables.posts.id))
-    .limit(pageSize)
-    .offset((page - 1) * pageSize);
+      })
+      .from(tables.posts)
+      .innerJoin(tables.users, eq(tables.posts.authorId, tables.users.id))
+      .where(where)
+      .orderBy(desc(tables.posts.createdAt), desc(tables.posts.id))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+  ]);
 
   return ok({
     items: rows.map((r) => ({

@@ -25,34 +25,33 @@ type LinkErrorCopy = {
 export const LINK_ERRORS = {
   LinkedInEmailRequired: {
     signIn:
-      "LinkedIn did not share an email address. Continue with email to start your application.",
-    me: "LinkedIn did not share an email address. Nothing changed.",
+      "LinkedIn did not share an email address. Confirm your LinkedIn account has a primary email, then try again or contact admin@mcac.org.in.",
+    me: "LinkedIn did not share an email address. Confirm your LinkedIn primary email, then try again.",
   },
   OAuthAccountNotLinked: {
     signIn:
-      "An account already uses this email. Sign in with your email and password below - a second account will not be created.",
-    me: "That LinkedIn account is already connected to another member. Contact an administrator if that seems wrong.",
+      "This LinkedIn account is already connected to an MCAC account. Contact admin@mcac.org.in if you cannot sign in.",
+    me: "That LinkedIn account is already connected to another member. Contact admin@mcac.org.in if that seems wrong.",
   },
   // AccessDenied only comes from a signIn callback rejection, which for an
   // anonymous visitor cannot happen - so it has no /sign-in copy and falls
   // through to the generic message there, and is handled on /me instead.
   AccessDenied: {
-    me: "We could not confirm it was you. Nothing changed - start again from this page.",
+    me: "We could not confirm it was you. Please start again from this page.",
   },
   // A provider-side failure is OAuthCallbackError (@auth/core
   // callback/oauth/callback.js:96-102).
   OAuthCallbackError: {
-    signIn:
-      "LinkedIn did not finish. Nothing was submitted - try again or use email.",
-    me: "LinkedIn did not finish. Nothing changed.",
+    signIn: "LinkedIn sign-in did not finish. Please try again.",
+    me: "LinkedIn did not finish connecting. Please try again.",
   },
 } as const satisfies Record<string, LinkErrorCopy>;
 
 export type LinkErrorCode = keyof typeof LINK_ERRORS;
 
 const SIGN_IN_FALLBACK =
-  "Sign-in did not complete. Nothing was submitted - try again.";
-const ME_FALLBACK = "Connecting LinkedIn did not finish. Nothing changed.";
+  "Sign-in did not complete. Please try again.";
+const ME_FALLBACK = "LinkedIn did not finish connecting. Please try again.";
 
 /** Only these codes may be forwarded into a URL. */
 export function isForwardableError(code: string): code is LinkErrorCode {
