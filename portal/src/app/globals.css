@@ -1,0 +1,483 @@
+/* MCAC Members Portal design tokens
+   Ported from design/wireframes/styles.css (approved client-facing system).
+   Design read: trust-first product UI, calm and editorial.
+   Shape lock: containers 12px, controls 8px, tags pill, avatars 10px.
+   Color lock: single navy accent; gold appears only in the logo mark. */
+
+@import "tailwindcss";
+
+@theme {
+  /* Surfaces (OKLCH: perceptually even steps, same rendered colors) */
+  --color-bg: oklch(0.985 0 0);
+  --color-surface: oklch(1 0 0);
+  --color-surface-subtle: oklch(0.967 0.001 286.375);
+  --color-surface-sunken: oklch(0.944 0.003 286.348);
+
+  /* Ink */
+  --color-ink: oklch(0.21 0.006 285.885);
+  --color-ink-secondary: oklch(0.441 0.016 281.165);
+  --color-ink-muted: oklch(0.549 0.017 285.829);
+
+  /* Lines */
+  --color-border: oklch(0.92 0.004 286.32);
+  --color-border-strong: oklch(0.835 0.01 286.189);
+
+  /* Accent (single navy accent; gold only in the logo mark) */
+  --color-navy: oklch(0.325 0.08 256.482);
+  --color-navy-hover: oklch(0.382 0.093 255.994);
+  --color-navy-text: oklch(0.412 0.112 256.778);
+  --color-navy-tint: oklch(0.96 0.008 253.853);
+  --color-gold-mark: oklch(0.781 0.112 84.758);
+
+  /* Status tints (muted, AA contrast on their tints) */
+  --color-success: oklch(0.513 0.114 157.937);
+  --color-success-bg: oklch(0.959 0.016 160.624);
+  --color-warning: oklch(0.508 0.103 71.193);
+  --color-warning-bg: oklch(0.966 0.021 85.943);
+  --color-danger: oklch(0.501 0.178 28.705);
+  --color-danger-bg: oklch(0.955 0.017 21.809);
+  --color-info-bg: oklch(0.96 0.008 253.853);
+
+  /* Post-type accents (opportunity / job / knowledge / event).
+     Four hues picked to stay in the navy/gold family while reading as
+     clearly distinct from each other and from the status tokens above,
+     and to stay entirely clear of the green/teal band (~120-200deg) -
+     the client dislikes green and this app already uses that band for
+     the `success` status. Hues: opportunity 83deg (warm gold, echoes
+     --color-gold-mark 84.758deg without reusing its exact recipe),
+     job 276deg (slate/indigo-blue, 20deg+ off --color-navy's 256.482deg
+     and markedly lower chroma so it reads as muted "slate" rather than
+     a second navy), knowledge 322deg (plum), event 35deg (terracotta).
+     Each pair follows the existing status-token recipe: a mid-lightness
+     (L 0.44-0.52) "text" color for icon/label ink, and a near-white
+     (L 0.96-0.965) tint for the pill background. Chroma for every value
+     was walked down from an initial pick to the sRGB gamut boundary for
+     its L/H (verified with an OKLab->linear-sRGB conversion script),
+     then given a small safety margin so no channel clips.
+     Rendered WCAG 2 contrast, text vs. its own tint / vs. white:
+       opportunity  5.03:1 / 5.58:1
+       job          6.77:1 / 7.63:1
+       knowledge    7.39:1 / 8.35:1
+       event        5.69:1 / 6.42:1
+     All four clear AA (4.5:1) with room; job and knowledge also clear
+     AAA (7:1). The composer's filled/selected state puts white text on
+     the "text" color as a solid background - by contrast symmetry that
+     reuses the exact ratios above. */
+  --type-opportunity: oklch(0.52 0.105 83);
+  --type-opportunity-bg: oklch(0.965 0.026 83);
+  --type-job: oklch(0.45 0.108 276);
+  --type-job-bg: oklch(0.96 0.017 276);
+  --type-knowledge: oklch(0.44 0.13 322);
+  --type-knowledge-bg: oklch(0.962 0.024 322);
+  --type-event: oklch(0.5 0.14 35);
+  --type-event-bg: oklch(0.96 0.018 35);
+
+  /* Shape lock */
+  --radius-container: 12px;
+  --radius-control: 8px;
+  --radius-avatar: 10px;
+
+  /* Minimum touch target (QUAL-01) */
+  --spacing-tap: 44px;
+
+  /* Motion: one strong ease-out for interactive state changes */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+
+  /* Depth: hairline border plus a barely-there two-layer shadow */
+  --shadow-card:
+    0 1px 2px oklch(0 0 0 / 0.04),
+    0 2px 8px oklch(0 0 0 / 0.03);
+
+  /* Type: system stack only, no webfonts */
+  --font-sans:
+    "Avenir Next", -apple-system, BlinkMacSystemFont,
+    "Segoe UI Variable Text", "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Focus ring (also available to raw CSS via var(--focus)) */
+  --focus: 0 0 0 2px oklch(1 0 0), 0 0 0 4px var(--color-navy-text);
+}
+
+@layer base {
+  html {
+    min-width: 320px;
+    background-color: var(--color-bg);
+    /* Missing weights or styles must fail visibly, never render faked. */
+    font-synthesis: none;
+  }
+
+  ::selection {
+    background-color: oklch(0.9 0.035 256.5);
+    /* Selected white-on-navy text must stay readable on the light tint. */
+    color: var(--color-ink);
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+    font-variant-numeric: tabular-nums;
+  }
+
+  html[data-ui="polished"] {
+    --color-bg: oklch(0.981 0.004 256.6);
+    --color-surface-subtle: oklch(0.961 0.005 256.7);
+    --color-surface-sunken: oklch(0.934 0.008 256.5);
+    --color-border: oklch(0.902 0.008 256.4);
+    --color-border-strong: oklch(0.794 0.02 256.4);
+    --shadow-card:
+      0 1px 1px oklch(0.2 0.03 256 / 0.035),
+      0 10px 32px oklch(0.2 0.03 256 / 0.045);
+  }
+
+  html[data-ui="polished"] body {
+    background-image:
+      radial-gradient(
+        circle at 92% 3%,
+        oklch(0.325 0.08 256.482 / 0.055),
+        transparent 28rem
+      ),
+      linear-gradient(
+        180deg,
+        oklch(1 0 0 / 0.42),
+        transparent 18rem
+      );
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  /* Keep control text at 16px on touch screens so iOS Safari
+     does not auto-zoom on focus (body text is 15px). */
+  @media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+
+  button,
+  select,
+  input,
+  textarea,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--focus);
+  }
+
+  h1,
+  h2,
+  h3 {
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+
+  ::placeholder {
+    color: var(--color-ink-muted);
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Reversible presentation layer. Set data-ui="approved" for the rollback.
+   These selectors do not change route or form behavior. */
+html[data-ui="polished"] .ui-screen-id,
+html[data-ui="polished"] .ui-internal-scaffold {
+  display: none;
+}
+
+html[data-ui="polished"] .ui-page-header {
+  margin-bottom: 1.5rem;
+  animation: ui-header-in 220ms var(--ease-out-strong) both;
+}
+
+html[data-ui="polished"] .ui-page-title {
+  font-size: clamp(1.5rem, 1.3rem + 0.65vw, 1.8rem);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+html[data-ui="polished"] .ui-page-description {
+  margin-top: 0.5rem;
+  font-size: 0.975rem;
+  line-height: 1.6;
+}
+
+html[data-ui="polished"] .ui-card {
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+html[data-ui="polished"] .ui-button {
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms var(--ease-out-strong);
+}
+
+html[data-ui="polished"] .ui-button-primary {
+  box-shadow: 0 5px 14px oklch(0.325 0.08 256.482 / 0.16);
+}
+
+html[data-ui="polished"] .ui-button:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+html[data-ui="polished"] .ui-auth-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+html[data-ui="polished"] .ui-auth-shell::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  top: clamp(5rem, 15vh, 10rem);
+  left: max(1rem, calc(50% + 15rem));
+  width: clamp(12rem, 24vw, 22rem);
+  aspect-ratio: 1;
+  background: url("/brand/mcac-mark.png") center / contain no-repeat;
+  opacity: 0.035;
+  transform: rotate(6deg);
+  pointer-events: none;
+}
+
+html[data-ui="polished"] .ui-member-rail {
+  background:
+    linear-gradient(
+      180deg,
+      oklch(1 0 0 / 0.92),
+      oklch(0.97 0.008 256.5 / 0.92)
+    );
+}
+
+html[data-ui="polished"] .ui-brand-lockup img {
+  transition: transform 180ms var(--ease-out-strong);
+}
+
+html[data-ui="polished"] .ui-app-header,
+html[data-ui="polished"] .ui-mobile-tabs {
+  background-color: oklch(1 0 0 / 0.88);
+}
+
+html[data-ui="polished"] .ui-nav-item {
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    transform 150ms var(--ease-out-strong);
+}
+
+html[data-ui="polished"] .ui-feed-toolbar {
+  margin-bottom: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-container);
+  background: oklch(1 0 0 / 0.76);
+  padding: 0.75rem;
+  box-shadow: 0 1px 1px oklch(0.2 0.03 256 / 0.025);
+}
+
+html[data-ui="polished"] .ui-feed-toolbar > :last-child {
+  margin-bottom: 0;
+}
+
+html[data-ui="polished"] .ui-view-chip,
+html[data-ui="polished"] .ui-type-chip {
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease,
+    transform 150ms var(--ease-out-strong);
+}
+
+html[data-ui="polished"] .ui-type-chip {
+  min-height: 2.25rem;
+  border-color: transparent;
+  background: transparent;
+}
+
+html[data-ui="polished"] .ui-type-chip[aria-current="true"] {
+  border-color: var(--color-border);
+  background: var(--color-surface-sunken);
+  color: var(--color-ink);
+}
+
+html[data-ui="polished"] .ui-feed-card {
+  overflow: clip;
+}
+
+.ui-post-visual {
+  display: none;
+}
+
+html[data-ui="polished"] .ui-post-visual {
+  display: block;
+}
+
+html[data-ui="polished"] .ui-feed-visual {
+  aspect-ratio: 16 / 7;
+  margin: -1rem -1rem 0.25rem;
+  border-bottom-width: 1px;
+}
+
+html[data-ui="polished"] .ui-post-detail-visual {
+  aspect-ratio: 16 / 7;
+  border-width: 1px;
+  border-radius: var(--radius-container);
+  box-shadow: var(--shadow-card);
+}
+
+html[data-ui="polished"] .ui-member-result {
+  transition:
+    background-color 150ms ease,
+    padding-inline 180ms var(--ease-out-strong);
+}
+
+html[data-ui="polished"] .ui-member-avatar {
+  width: 2.875rem !important;
+  height: 2.875rem !important;
+  border: 2px solid oklch(1 0 0 / 0.9);
+  box-shadow: 0 0 0 1px var(--color-border);
+}
+
+html[data-ui="polished"] .ui-profile-card {
+  border-top: 3px solid var(--color-navy);
+}
+
+html[data-ui="polished"] .ui-contact-card {
+  background: oklch(0.974 0.008 256.5);
+}
+
+html[data-ui="polished"] .ui-stat-card {
+  box-shadow: none;
+  background: oklch(1 0 0 / 0.66);
+}
+
+html[data-ui="polished"] .ui-stat-card > :first-child {
+  font-size: 1.8rem;
+  letter-spacing: -0.035em;
+}
+
+html[data-ui="polished"] .ui-table-card {
+  box-shadow: 0 1px 1px oklch(0.2 0.03 256 / 0.03);
+}
+
+html[data-ui="polished"] .ui-table-row {
+  transition: background-color 140ms ease;
+}
+
+html[data-ui="polished"] .ui-notification-menu {
+  transform-origin: top right;
+  animation: ui-popover-in 180ms var(--ease-out-strong) both;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html[data-ui="polished"] .ui-nav-item:hover {
+    transform: translateX(2px);
+  }
+
+  html[data-ui="polished"] .ui-mobile-tabs .ui-nav-item:hover {
+    transform: translateY(-1px);
+  }
+
+  html[data-ui="polished"] .ui-view-chip:hover,
+  html[data-ui="polished"] .ui-type-chip:hover {
+    transform: translateY(-1px);
+  }
+
+  html[data-ui="polished"] .ui-member-result:hover {
+    padding-inline: 1rem;
+  }
+
+  html[data-ui="polished"] .ui-brand-lockup:hover img {
+    transform: rotate(-2deg) scale(1.025);
+  }
+}
+
+@media (max-width: 767px) {
+  html[data-ui="polished"] .ui-auth-shell::before {
+    top: auto;
+    right: -4rem;
+    bottom: 4rem;
+    left: auto;
+    width: 14rem;
+  }
+
+  html[data-ui="polished"] .ui-feed-toolbar {
+    margin-inline: -0.25rem;
+    padding: 0.65rem;
+  }
+}
+
+@keyframes ui-header-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ui-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Shimmer for Skeleton loading blocks */
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@utility skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      oklch(1 0 0 / 0.6),
+      transparent
+    );
+    animation: shimmer 1.35s infinite;
+  }
+}

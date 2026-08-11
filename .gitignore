@@ -1,0 +1,10 @@
+# Files intentionally excluded from the sanitized deployment mirror.
+portal/.gstack/
+portal/AGENTS.md
+portal/CLAUDE.md
+portal/e2e/
+portal/playwright.config.ts
+portal/public/demo/
+portal/scripts/
+portal/src/db/seed.ts
+portal/src/lib/posts/kernel-smoke.ts
