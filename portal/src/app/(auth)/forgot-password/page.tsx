@@ -5,6 +5,7 @@ import { getConfig } from "@/lib/config";
 import { ForgotPasswordForm } from "./forgot-password-form";
 
 export const metadata = { title: "Forgot password - MCAC Members Portal" };
+export const dynamic = "force-dynamic";
 
 export default async function ForgotPasswordPage() {
   if (!(await getConfig("auth.emailFallbackEnabled"))) redirect("/sign-in");

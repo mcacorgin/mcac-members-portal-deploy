@@ -4,6 +4,7 @@ import { getConfig } from "@/lib/config";
 import { ResetPasswordForm } from "./reset-password-form";
 
 export const metadata = { title: "Reset password - MCAC Members Portal" };
+export const dynamic = "force-dynamic";
 
 export default async function ResetPasswordPage({
   searchParams,
