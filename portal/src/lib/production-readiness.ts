@@ -6,7 +6,6 @@ const REQUIRED = [
   "RESEND_API_KEY",
   "EMAIL_FROM",
   "SUPABASE_URL",
-  "SUPABASE_SERVICE_ROLE_KEY",
   "SUPABASE_STORAGE_BUCKET",
 ] as const;
 
@@ -19,6 +18,9 @@ export function productionConfigErrors(env: Environment): string[] {
 
   if (!usable(env.DATABASE_URL) || isLocalUrl(env.DATABASE_URL)) {
     errors.push("DATABASE_URL is missing or local");
+  }
+  if (!usable(env.SUPABASE_SECRET_KEY) && !usable(env.SUPABASE_SERVICE_ROLE_KEY)) {
+    errors.push("SUPABASE_SECRET_KEY is not configured");
   }
   if (env.STORAGE_DRIVER !== "supabase") {
     errors.push('STORAGE_DRIVER must be "supabase"');
