@@ -42,7 +42,7 @@ export function VisibilityForm({
   defaults: {
     phone: VisibilityChoice;
     email: VisibilityChoice;
-    linkedin: VisibilityChoice;
+    linkedin: VisibilityChoice; // gitleaks:allow -- type-only field, not a credential
   };
 }) {
   const [state, formAction, pending] = useActionState<
