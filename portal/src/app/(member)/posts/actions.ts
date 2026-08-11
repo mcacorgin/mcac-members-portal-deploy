@@ -6,6 +6,7 @@ import {
   addComment,
   deleteOwnComment,
   removePost,
+  setPostRetentionExempt,
   toggleBookmark,
   updatePost,
 } from "@/lib/posts/mutations";
@@ -74,6 +75,16 @@ export async function removePostAction(
 ): Promise<ActionResult<void>> {
   const viewer = await requireViewer();
   const result = await removePost(viewer, postId, reason);
+  if (result.ok) revalidatePost(postId);
+  return result;
+}
+
+export async function setPostRetentionExemptAction(
+  postId: string,
+  exempt: boolean,
+): Promise<ActionResult<void>> {
+  const viewer = await requireViewer();
+  const result = await setPostRetentionExempt(viewer, postId, exempt);
   if (result.ok) revalidatePost(postId);
   return result;
 }

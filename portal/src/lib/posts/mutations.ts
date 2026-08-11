@@ -406,6 +406,32 @@ export async function removePost(
   return ok(undefined);
 }
 
+export async function setPostRetentionExempt(
+  admin: Viewer | null,
+  postId: string,
+  exempt: boolean,
+): Promise<ActionResult<void>> {
+  const accessErr = adminAccessError(admin);
+  if (accessErr) return err(accessErr, "Only admins can change retention.");
+  const a = admin!;
+
+  const [updated] = await db
+    .update(tables.posts)
+    .set({ retentionExempt: exempt, updatedAt: new Date() })
+    .where(eq(tables.posts.id, postId))
+    .returning({ id: tables.posts.id });
+  if (!updated) return err("not_found", "Post not found.");
+
+  await recordAudit({
+    actorId: a.id,
+    action: "post.retention_exemption_set",
+    subjectType: "post",
+    subjectId: postId,
+    detail: { exempt },
+  });
+  return ok(undefined);
+}
+
 /** Flip expired active opportunities to "old". Called by a cron route. */
 export async function runExpirySweep(): Promise<number> {
   const swept = await db

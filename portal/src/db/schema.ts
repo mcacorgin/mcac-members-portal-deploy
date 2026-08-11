@@ -258,6 +258,7 @@ export const posts = pgTable(
     metadata: jsonb("metadata").notNull().default({}),
     status: postStatus("status").notNull().default("active"),
     expiresAt: timestamp("expires_at", { mode: "date" }),
+    retentionExempt: boolean("retention_exempt").notNull().default(false),
     removedReason: text("removed_reason"),
     lastEditedById: text("last_edited_by_id").references(() => users.id),
     lastEditedAt: timestamp("last_edited_at", { mode: "date" }),
@@ -334,6 +335,7 @@ export const attachments = pgTable(
     sizeBytes: integer("size_bytes").notNull(),
     objectKey: text("object_key").notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().default(utcNow),
+    purgedAt: timestamp("purged_at", { mode: "date" }),
   },
   (t) => [
     uniqueIndex("attachments_object_key_idx").on(t.objectKey),
