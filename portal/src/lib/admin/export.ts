@@ -3,6 +3,7 @@ import { db, tables } from "@/db";
 import { adminAccessError, type Viewer } from "@/lib/authz";
 import { recordAudit } from "@/lib/audit";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
+import { buildXlsxWorkbook } from "@/lib/xlsx";
 
 // Member dataset export (MEMB-05, ADMIN-04). Exports are an admin surface,
 // so admin-visible fields are included; every cell is sanitized against
@@ -110,19 +111,7 @@ export async function exportMembersXlsx(
   const denied = adminAccessError(admin);
   if (denied) return err(denied, "Administrator access is required.");
   const rows = await exportRows();
-  // ExcelJS pulls in Node-only ZIP adapters. Load it only after authorization
-  // and only for an Excel request so CSV and signed-out requests cannot fail
-  // while evaluating the route module in a serverless runtime.
-  const ExcelJS = (await import("exceljs")).default;
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("Members");
-  sheet.addRow([...HEADERS]);
-  sheet.getRow(1).font = { bold: true };
-  for (const r of rows) sheet.addRow(r);
-  sheet.columns.forEach((col) => {
-    col.width = 18;
-  });
-  const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+  const buffer = buildXlsxWorkbook("Members", [...HEADERS], rows);
   await recordAudit({
     actorId: admin!.id,
     action: "members.export",
