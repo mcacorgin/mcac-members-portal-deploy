@@ -54,7 +54,7 @@ export default async function PolicyPage() {
       </div>
       <PageHeader
         title="Policy"
-        description="Late-binding decisions live here as configuration. Changes apply immediately and are audit logged; no code change is needed."
+        description="Manage sign-in, contact visibility, post expiry, and section access. Changes take effect immediately and are recorded in the audit log."
       />
       <div className="grid gap-4">
         <SectionsControl

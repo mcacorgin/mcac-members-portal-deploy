@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
-import { memberAccessError, sectionEnabledFor } from "@/lib/authz";
+import { enabledSections, memberAccessError } from "@/lib/authz";
 import { resolveLandingPath } from "@/lib/account/routing";
-import { POST_TYPE_NAMES } from "@/lib/posts/types";
 import {
   ALLOWED_ATTACHMENT_MIMES,
   MAX_ATTACHMENT_BYTES,
@@ -18,10 +17,7 @@ export default async function SharePage() {
   const denied = memberAccessError(viewer);
   if (denied) redirect(await resolveLandingPath(viewer));
 
-  const enabledFlags = await Promise.all(
-    POST_TYPE_NAMES.map((t) => sectionEnabledFor(t, viewer!.id)),
-  );
-  const enabledTypes = POST_TYPE_NAMES.filter((_, i) => enabledFlags[i]);
+  const enabledTypes = await enabledSections(viewer!.id);
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -34,7 +30,7 @@ export default async function SharePage() {
       {enabledTypes.length === 0 ? (
         <ErrorState
           title="Sharing is not available"
-          body="Every share type is hidden by your effective section settings. The rest of the portal remains available."
+          body="An administrator has disabled every share type for your account. The rest of the portal remains available."
           action={
             <Button href="/home" variant="secondary">
               Back to Home

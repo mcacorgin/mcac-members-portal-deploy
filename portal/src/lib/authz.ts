@@ -1,5 +1,6 @@
 import { db, tables, type DbOrTx } from "@/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
+import { cache } from "react";
 import { getConfig, type ConfigKey } from "@/lib/config";
 import type { ErrorCode } from "@/lib/contracts/result";
 import { POST_TYPE_NAMES, type PostTypeName } from "@/lib/posts/types";
@@ -133,6 +134,9 @@ export async function sectionEnabledFor(
   userId: string,
   dbOrTx: DbOrTx = db,
 ): Promise<boolean> {
+  if (dbOrTx === db) {
+    return (await enabledSections(userId)).includes(section);
+  }
   const globallyEnabled = await getConfig(
     `sections.${section}` as ConfigKey,
     dbOrTx,
@@ -156,9 +160,40 @@ export async function enabledSections(
   userId: string,
   dbOrTx: DbOrTx = db,
 ): Promise<PostTypeName[]> {
-  const out: PostTypeName[] = [];
-  for (const section of POST_TYPE_NAMES) {
-    if (await sectionEnabledFor(section, userId, dbOrTx)) out.push(section);
+  if (dbOrTx !== db) {
+    const enabled = await Promise.all(
+      POST_TYPE_NAMES.map((section) => sectionEnabledFor(section, userId, dbOrTx)),
+    );
+    return POST_TYPE_NAMES.filter((_, index) => enabled[index]);
   }
-  return out;
+  return cachedEnabledSections(userId);
 }
+
+const cachedEnabledSections = cache(async (userId: string): Promise<PostTypeName[]> => {
+  const keys = POST_TYPE_NAMES.map((section) => `sections.${section}`);
+  const [configRows, overrideRows] = await Promise.all([
+    db
+      .select({ key: tables.appConfig.key, value: tables.appConfig.value })
+      .from(tables.appConfig)
+      .where(inArray(tables.appConfig.key, keys)),
+    db
+      .select({
+        section: tables.memberSectionOverrides.section,
+        enabled: tables.memberSectionOverrides.enabled,
+      })
+      .from(tables.memberSectionOverrides)
+      .where(eq(tables.memberSectionOverrides.userId, userId)),
+  ]);
+
+  const global = new Map(configRows.map((row) => [row.key, row.value]));
+  const overrides = new Map(
+    overrideRows.map((row) => [row.section, row.enabled]),
+  );
+
+  return POST_TYPE_NAMES.filter((section) => {
+    const configured = global.get(`sections.${section}`);
+    const globallyEnabled =
+      typeof configured === "boolean" ? configured : true;
+    return globallyEnabled && (overrides.get(section) ?? true);
+  });
+});

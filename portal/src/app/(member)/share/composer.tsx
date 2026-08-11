@@ -273,7 +273,7 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
           ))}
         </div>
         <small className="text-xs text-ink-muted">
-          Nothing is preselected. Only sections enabled for you are shown.
+          Select a type to see the right fields.
         </small>
         <FieldError>{errFor("type")}</FieldError>
         {type ? <input type="hidden" name="type" value={type} /> : null}
@@ -511,7 +511,7 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
         </>
       ) : (
         <p className="rounded-container border border-border bg-surface px-4 py-5 text-sm text-ink-secondary">
-          Choose a type to continue. Nothing is silently preselected.
+          Choose what you want to share to continue.
         </p>
       )}
 
@@ -535,14 +535,10 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
         </p>
       ) : null}
 
-      <div className="grid gap-2">
+      <div>
         <Button type="submit" disabled={pending || !type} size="lg">
           {pending ? "Publishing..." : "Publish"}
         </Button>
-        <small className="text-xs text-ink-muted">
-          Phase 1 boundary: payment collection, automated WhatsApp messages,
-          and AI-assisted tagging are not part of sharing.
-        </small>
       </div>
     </form>
   );
