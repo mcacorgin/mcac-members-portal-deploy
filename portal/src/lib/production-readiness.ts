@@ -9,7 +9,7 @@ const REQUIRED = [
   "EMAIL_FROM",
   "SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
-  "SUPABASE_BUCKET",
+  "SUPABASE_STORAGE_BUCKET",
 ] as const;
 
 export function productionConfigErrors(env: Environment): string[] {
