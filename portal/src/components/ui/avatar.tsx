@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { cx } from "./cx";
 
 export type AvatarSize = "md" | "lg";
@@ -26,14 +29,18 @@ const sizeClasses: Record<AvatarSize, string> = {
 
 /** 10px-radius avatar with initials fallback on navy. */
 export function Avatar({ name, src, size = "md", className }: AvatarProps) {
-  if (src) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+
+  if (src && src !== failedSrc) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- avatar sources are user-supplied URLs; next/image needs domain allowlisting
       <img
         src={src}
         alt={name}
         loading="lazy"
+        decoding="async"
         referrerPolicy="no-referrer"
+        onError={() => setFailedSrc(src)}
         className={cx(
           "flex-none rounded-avatar object-cover",
           sizeClasses[size],

@@ -312,6 +312,28 @@ html[data-ui="polished"] .ui-feed-toolbar {
   box-shadow: 0 1px 1px oklch(0.2 0.03 256 / 0.025);
 }
 
+.ui-filter-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ui-filter-disclosure .ui-filter-caret {
+  transition: transform 160ms var(--ease-out-strong);
+}
+
+.ui-filter-disclosure[open] .ui-filter-caret {
+  transform: rotate(180deg);
+}
+
+.ui-type-switcher,
+.ui-expertise-strip {
+  scrollbar-width: none;
+}
+
+.ui-type-switcher::-webkit-scrollbar,
+.ui-expertise-strip::-webkit-scrollbar {
+  display: none;
+}
+
 html[data-ui="polished"] .ui-feed-toolbar > :last-child {
   margin-bottom: 0;
 }
@@ -326,15 +348,15 @@ html[data-ui="polished"] .ui-type-chip {
 }
 
 html[data-ui="polished"] .ui-type-chip {
-  min-height: 2.25rem;
+  min-height: var(--spacing-tap);
   border-color: transparent;
   background: transparent;
 }
 
 html[data-ui="polished"] .ui-type-chip[aria-current="true"] {
-  border-color: var(--color-border);
-  background: var(--color-surface-sunken);
-  color: var(--color-ink);
+  border-color: var(--color-navy);
+  background: transparent;
+  color: var(--color-navy-text);
 }
 
 html[data-ui="polished"] .ui-feed-card {
@@ -416,7 +438,8 @@ html[data-ui="polished"] .ui-notification-menu {
   }
 
   html[data-ui="polished"] .ui-view-chip:hover,
-  html[data-ui="polished"] .ui-type-chip:hover {
+  html[data-ui="polished"] .ui-type-chip:hover,
+  html[data-ui="polished"] .ui-expertise-chip:hover {
     transform: translateY(-1px);
   }
 
@@ -439,9 +462,32 @@ html[data-ui="polished"] .ui-notification-menu {
   }
 
   html[data-ui="polished"] .ui-feed-toolbar {
-    margin-inline: -0.25rem;
-    padding: 0.65rem;
+    margin-inline: 0;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
   }
+
+  html[data-ui="polished"] .ui-feed-heading,
+  html[data-ui="polished"] .ui-directory-heading {
+    margin-bottom: 1rem;
+  }
+
+  html[data-ui="polished"] .ui-feed-heading .ui-page-description,
+  html[data-ui="polished"] .ui-directory-heading .ui-page-description {
+    margin-top: 0.25rem;
+    line-height: 1.45;
+  }
+
+  html[data-ui="polished"] .ui-directory-toolbar {
+    padding-bottom: 0.25rem;
+  }
+
+  html[data-ui="polished"] .ui-feed-card {
+    gap: 0.5rem;
+  }
+
 }
 
 @keyframes ui-header-in {

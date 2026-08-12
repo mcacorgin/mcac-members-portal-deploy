@@ -108,63 +108,90 @@ export default async function PeoplePage({
 
   return (
     <div className="mx-auto w-full max-w-3xl">
-      <ScreenId id="PEOPLE-01" className="mb-2" />
       <PageHeader
         title="People"
-        description="Find an approved member by name, city, or expertise, then use only permitted direct contact."
+        description="Find members by name, city, or expertise. Contact details appear only when shared."
         action={
-          <Tag>
+          <span className="inline-flex min-h-tap items-center text-sm text-ink-muted">
             {total} {total === 1 ? "member" : "members"}
-          </Tag>
+          </span>
         }
+        className="ui-directory-heading"
       />
 
       <form
         method="get"
         action="/people"
-        className="mb-3 grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_170px_auto] sm:items-end"
+        role="search"
+        className="ui-directory-toolbar mb-3 grid gap-2.5"
       >
-        <div className="grid gap-1.5">
-          <Label htmlFor="people-q">
-            Search members - name, city, or company
-          </Label>
+        <Label htmlFor="people-q" className="text-sm font-medium">
+          Search members
+        </Label>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
           <Input
             id="people-q"
             type="search"
             name="q"
             defaultValue={q}
-            placeholder="Try a name or a city"
+            placeholder="Name, company, or city"
           />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="people-city">City</Label>
-          <Select id="people-city" name="city" defaultValue={city}>
-            <option value="">All cities</option>
-            {cities.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </Select>
+          <Button type="submit" className="px-4">
+            Search
+          </Button>
         </div>
         {tagId ? <input type="hidden" name="tag" value={tagId} /> : null}
-        <Button type="submit" variant="secondary">
-          Search
-        </Button>
+        <details
+          className="ui-filter-disclosure rounded-control border border-border bg-surface"
+          open={Boolean(city)}
+        >
+          <summary className="flex min-h-tap cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-medium text-ink-secondary">
+            <span>City filter</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="max-w-40 truncate text-ink-muted">
+                {city || "All cities"}
+              </span>
+              <span
+                aria-hidden="true"
+                className="ui-filter-caret text-base text-ink-muted"
+              >
+                ⌄
+              </span>
+            </span>
+          </summary>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-t border-border p-3">
+            <Select
+              id="people-city"
+              name="city"
+              defaultValue={city}
+              aria-label="City"
+            >
+              <option value="">All cities</option>
+              {cities.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </Select>
+            <Button type="submit" variant="secondary">
+              Apply
+            </Button>
+          </div>
+        </details>
       </form>
 
       <div
-        className="mb-4 flex gap-2 overflow-x-auto p-0.5"
+        className="ui-expertise-strip -mx-1 mb-3 flex gap-1 overflow-x-auto px-1 pb-1"
         aria-label="Filter by expertise"
       >
         <Link
           href={chipHref({ q, city, tag: "" })}
           aria-current={!tagId ? "true" : undefined}
           className={cx(
-            "flex min-h-tap flex-none items-center rounded-full border px-3.5 text-[13px] font-medium",
+            "ui-expertise-chip flex min-h-tap flex-none items-center border-b-2 px-2.5 text-[13px] font-medium transition-[color,border-color,transform]",
             !tagId
-              ? "border-navy bg-navy text-white"
-              : "border-border bg-surface text-ink-secondary hover:border-border-strong",
+              ? "border-navy font-semibold text-navy-text"
+              : "border-transparent text-ink-muted hover:text-ink-secondary",
           )}
         >
           All expertise
@@ -177,10 +204,10 @@ export default async function PeoplePage({
               href={chipHref({ q, city, tag: active ? "" : t.id })}
               aria-current={active ? "true" : undefined}
               className={cx(
-                "flex min-h-tap flex-none items-center rounded-full border px-3.5 text-[13px] font-medium",
+                "ui-expertise-chip flex min-h-tap flex-none items-center border-b-2 px-2.5 text-[13px] font-medium transition-[color,border-color,transform]",
                 active
-                  ? "border-navy bg-navy text-white"
-                  : "border-border bg-surface text-ink-secondary hover:border-border-strong",
+                  ? "border-navy font-semibold text-navy-text"
+                  : "border-transparent text-ink-muted hover:text-ink-secondary",
               )}
             >
               {t.label}
@@ -264,10 +291,20 @@ export default async function PeoplePage({
                         </span>
                       ) : null}
                       {member.tags.length > 0 ? (
-                        <span className="mt-1.5 flex flex-wrap gap-1.5">
-                          {member.tags.map((label) => (
+                        <span className="ui-member-tags mt-1.5 flex flex-wrap gap-1.5">
+                          {member.tags.slice(0, 2).map((label) => (
                             <Tag key={label}>{label}</Tag>
                           ))}
+                          {member.tags.slice(2).map((label) => (
+                            <Tag key={label} className="hidden sm:inline-flex">
+                              {label}
+                            </Tag>
+                          ))}
+                          {member.tags.length > 2 ? (
+                            <Tag className="sm:hidden">
+                              +{member.tags.length - 2}
+                            </Tag>
+                          ) : null}
                         </span>
                       ) : null}
                     </span>
@@ -280,6 +317,7 @@ export default async function PeoplePage({
             })}
           </ul>
 
+          {total > pageSize ? (
           <div className="mt-3.5 flex items-center justify-between gap-2.5 py-2 text-xs text-ink-muted">
             <span>
               Showing {start}-{end} of {total}{" "}
@@ -295,23 +333,12 @@ export default async function PeoplePage({
                 <Button href={pageHref(page + 1)} variant="secondary" size="sm">
                   Next
                 </Button>
-              ) : (
-                <span className="inline-flex min-h-tap items-center">
-                  End of directory
-                </span>
-              )}
+              ) : null}
             </span>
           </div>
+          ) : null}
         </>
       )}
-
-      <p className="mt-2 flex gap-2 py-2 text-xs text-ink-muted">
-        <strong className="font-semibold text-ink-secondary">Privacy</strong>
-        <span>
-          Contact actions appear only on a profile when the member permits the
-          field. Hidden values are never present in page data.
-        </span>
-      </p>
     </div>
   );
 }
