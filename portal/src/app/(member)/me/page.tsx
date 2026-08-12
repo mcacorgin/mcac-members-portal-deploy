@@ -141,7 +141,12 @@ export default async function MePage({
 
       <section className="rounded-container bg-navy p-4.5 text-white">
         <div className="grid grid-cols-[54px_minmax(0,1fr)] items-center gap-3">
-          <Avatar name={viewer.name} size="lg" className="bg-white/15" />
+          <Avatar
+            name={viewer.name}
+            src={viewer.image ?? undefined}
+            size="lg"
+            className="bg-white/15"
+          />
           <div className="min-w-0">
             <h3 className="mb-0.5 text-base font-semibold">{viewer.name}</h3>
             {summaryLine ? (

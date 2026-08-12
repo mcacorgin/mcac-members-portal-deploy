@@ -20,6 +20,7 @@ import {
   isLinkedInLinked,
   LINK_INTENT_COOKIE,
 } from "@/lib/account/linked-accounts";
+import { linkedInProfilePicture } from "@/lib/linkedin-profile";
 import { recordAudit } from "@/lib/audit";
 import { sessionCookieName } from "@/lib/auth-cookie-name";
 
@@ -65,6 +66,10 @@ const baseConfig: NextAuthConfig = {
       ? [
           LinkedIn({
             ...linkedInOptions,
+            // LinkedIn's official user-info response carries the current
+            // profile picture. Fetch it explicitly instead of relying on the
+            // ID token to repeat every optional profile claim.
+            idToken: false,
             // Keep no bearer tokens or ID-token claims. handleLoginOrRegister
             // merges providerAccountId/provider/type/userId over this, so the
             // account row still identifies the member.
@@ -251,7 +256,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => {
     },
     callbacks: {
       ...baseConfig.callbacks,
-      async signIn({ account, user: providerUser }) {
+      async signIn({ account, user: providerUser, profile }) {
         if (account?.provider !== "linkedin") return true;
 
         // Without the request there is no way to tell a link from a
@@ -281,7 +286,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => {
         // No usable intent: legitimate only when nobody is signed in - the
         // ordinary registration and sign-in lane. A live session without one
         // means someone skipped the password check.
-        if (!intent) return !signedIn;
+        if (!intent) {
+          if (signedIn) return false;
+          await refreshLinkedInPicture(
+            providerUser.id,
+            linkedInProfilePicture(profile),
+          );
+          return true;
+        }
 
         // handleLoginOrRegister links to whoever the SESSION says, not to the
         // intent's owner (@auth/core callback/handle-login.js:200-211). So an
@@ -308,6 +320,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth((request) => {
         // registration. Only set it once the answer is yes: a refused link
         // writes no account row and so fires no event.
         viaEnrollmentIntent = true;
+        await refreshLinkedInPicture(
+          intent.userId,
+          linkedInProfilePicture(profile),
+        );
         return true;
       },
     },
@@ -348,6 +364,7 @@ async function freshViewer(
       id: true,
       name: true,
       email: true,
+      image: true,
       role: true,
       status: true,
       credentialsChangedAt: true,
@@ -366,7 +383,24 @@ async function freshViewer(
     id: row.id,
     name: row.name,
     email: row.email,
+    image: row.image,
     role: row.role,
     status: row.status,
   };
+}
+
+async function refreshLinkedInPicture(
+  userId: string | undefined,
+  picture: string | null,
+): Promise<void> {
+  if (!userId || !picture) return;
+  try {
+    await db
+      .update(tables.users)
+      .set({ image: picture })
+      .where(eq(tables.users.id, userId));
+  } catch (error) {
+    // A missing photo should never prevent an otherwise valid sign-in.
+    console.error(`auth: failed to refresh LinkedIn picture for ${userId}`, error);
+  }
 }
