@@ -164,7 +164,8 @@ export async function publishShareAction(
         bytes,
       });
       attached = result.ok;
-    } catch {
+    } catch (error) {
+      console.error("[share] attachment upload failed", error);
       attached = false;
     }
     if (!attached) {

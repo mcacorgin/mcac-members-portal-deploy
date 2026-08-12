@@ -74,6 +74,19 @@ function localDriver(): StorageDriver {
 
 const SIGNED_URL_EXPIRY_SECONDS = 60;
 
+export function supabaseStorageAuthHeaders(
+  serviceKey: string,
+): Record<string, string> {
+  const headers: Record<string, string> = { apikey: serviceKey };
+  // Legacy service-role keys are JWTs and Storage accepts them as a bearer
+  // token. Current sb_secret keys are opaque API keys and must not be parsed
+  // as JWTs, so they are sent only through the apikey header.
+  if (serviceKey.split(".").length === 3) {
+    headers.Authorization = `Bearer ${serviceKey}`;
+  }
+  return headers;
+}
+
 function supabaseDriver(): StorageDriver {
   const url = process.env.SUPABASE_URL;
   const serviceKey =
@@ -88,7 +101,7 @@ function supabaseDriver(): StorageDriver {
     process.env.SUPABASE_BUCKET ??
     "attachments";
   const base = `${url.replace(/\/+$/, "")}/storage/v1`;
-  const auth = { Authorization: `Bearer ${serviceKey}` };
+  const auth = supabaseStorageAuthHeaders(serviceKey);
 
   return {
     async put(key, bytes, mime) {
