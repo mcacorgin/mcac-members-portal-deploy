@@ -81,12 +81,21 @@ function feedHref(params: {
   return qs ? `/home?${qs}` : "/home";
 }
 
-function chipClass(active: boolean): string {
+function viewClass(active: boolean): string {
   return cx(
-    "inline-flex min-h-tap items-center rounded-full border px-3.5 text-sm font-medium transition-colors",
+    "ui-view-chip inline-flex min-h-tap min-w-0 items-center justify-center rounded-[6px] px-2 text-center text-[13px] font-medium transition-[color,background-color,box-shadow,transform]",
     active
-      ? "border-navy bg-navy text-white"
-      : "border-border-strong bg-surface text-ink-secondary hover:bg-surface-subtle",
+      ? "bg-surface font-semibold text-navy-text shadow-sm"
+      : "text-ink-secondary hover:bg-surface/70",
+  );
+}
+
+function typeClass(active: boolean): string {
+  return cx(
+    "ui-type-chip inline-flex min-h-tap flex-none items-center border-b-2 px-2.5 text-[13px] font-medium transition-[color,border-color,transform]",
+    active
+      ? "border-navy text-navy-text"
+      : "border-transparent text-ink-muted hover:text-ink-secondary",
   );
 }
 
@@ -186,18 +195,36 @@ export default async function HomePage({
   const { items, page, pageSize, total } = result.data;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const filtered = Boolean(q || type || mandateType || industry || geography);
+  const opportunityFilterCount = [mandateType, industry, geography].filter(
+    Boolean,
+  ).length;
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
-      {header}
+    <div className="ui-feed-page mx-auto w-full max-w-3xl">
+      <PageHeader
+        title="Home"
+        description={
+          <>
+            <span className="sm:hidden">Latest from the MCAC network.</span>
+            <span className="hidden sm:inline">
+              Opportunities, jobs, knowledge, and events from the network.
+            </span>
+          </>
+        }
+        action={<ScreenId id="HOME-01" />}
+        className="ui-feed-heading"
+      />
 
-      <nav aria-label="Feed views" className="mb-3 flex flex-wrap gap-2">
+      <nav
+        aria-label="Feed views"
+        className="ui-view-switcher mb-2 grid grid-cols-4 gap-1 rounded-control bg-surface-sunken p-1"
+      >
         {VIEWS.map((v) => (
           <Link
             key={v.view}
             href={feedHref({ view: v.view, type, q, mandateType, industry, geography })}
             aria-current={view === v.view ? "page" : undefined}
-            className={chipClass(view === v.view)}
+            className={viewClass(view === v.view)}
           >
             {v.label}
           </Link>
@@ -205,11 +232,14 @@ export default async function HomePage({
       </nav>
 
       {enabledTypes.length > 1 ? (
-        <nav aria-label="Post types" className="mb-3 flex flex-wrap gap-2">
+        <nav
+          aria-label="Post types"
+          className="ui-type-switcher -mx-1 mb-2 flex overflow-x-auto px-1"
+        >
           <Link
             href={feedHref({ view, q, mandateType, industry, geography })}
             aria-current={type === undefined ? "true" : undefined}
-            className={chipClass(type === undefined)}
+            className={typeClass(type === undefined)}
           >
             All
           </Link>
@@ -218,7 +248,7 @@ export default async function HomePage({
               key={t}
               href={feedHref({ view, type: t, q })}
               aria-current={type === t ? "true" : undefined}
-              className={chipClass(type === t)}
+              className={typeClass(type === t)}
             >
               {TYPE_PLURAL_LABELS[t]}
             </Link>
@@ -226,35 +256,90 @@ export default async function HomePage({
         </nav>
       ) : null}
 
-      <form action="/home" method="get" role="search" className="mb-4 grid gap-3">
+      <form
+        action="/home"
+        method="get"
+        role="search"
+        className="ui-feed-toolbar mb-4 grid gap-2.5"
+      >
         {view !== "active" ? (
           <input type="hidden" name="view" value={view} />
         ) : null}
         {type ? <input type="hidden" name="type" value={type} /> : null}
-        <Input
-          type="search"
-          name="q"
-          defaultValue={q ?? ""}
-          placeholder="Search posts"
-          aria-label="Search posts"
-        />
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+          <Input
+            type="search"
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="Search posts"
+            aria-label="Search posts"
+          />
+          <Button type="submit" className="px-4">
+            Search
+          </Button>
+        </div>
         {!type || type === "opportunity" ? (
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Select name="mandateType" defaultValue={mandateType ?? ""} aria-label="Mandate type">
-              <option value="">All mandate types</option>
-              {OPPORTUNITY_MANDATE_TYPES.map((kind) => (
-                <option key={kind} value={kind}>
-                  {MANDATE_TYPE_LABELS[kind]}
-                </option>
-              ))}
-            </Select>
-            <Input name="industry" defaultValue={industry ?? ""} placeholder="Filter by industry" aria-label="Filter by industry" />
-            <Input name="geography" defaultValue={geography ?? ""} placeholder="Filter by geography" aria-label="Filter by geography" />
-          </div>
+          <details
+            className="ui-filter-disclosure rounded-control border border-border bg-surface"
+            open={opportunityFilterCount > 0}
+          >
+            <summary className="flex min-h-tap cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-medium text-ink-secondary">
+              <span className="flex items-center gap-2">
+                Opportunity filters
+                {opportunityFilterCount > 0 ? (
+                  <span className="grid size-5 place-items-center rounded-full bg-navy text-[11px] font-semibold text-white">
+                    {opportunityFilterCount}
+                  </span>
+                ) : null}
+              </span>
+              <span
+                aria-hidden="true"
+                className="ui-filter-caret text-base text-ink-muted"
+              >
+                ⌄
+              </span>
+            </summary>
+            <div className="grid gap-2.5 border-t border-border p-3 sm:grid-cols-3">
+              <Select
+                name="mandateType"
+                defaultValue={mandateType ?? ""}
+                aria-label="Mandate type"
+              >
+                <option value="">All mandate types</option>
+                {OPPORTUNITY_MANDATE_TYPES.map((kind) => (
+                  <option key={kind} value={kind}>
+                    {MANDATE_TYPE_LABELS[kind]}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                name="industry"
+                defaultValue={industry ?? ""}
+                placeholder="Industry"
+                aria-label="Filter by industry"
+              />
+              <Input
+                name="geography"
+                defaultValue={geography ?? ""}
+                placeholder="Geography"
+                aria-label="Filter by geography"
+              />
+              <div className="flex items-center gap-3 sm:col-span-3">
+                <Button type="submit" variant="secondary">
+                  Apply filters
+                </Button>
+                {opportunityFilterCount > 0 ? (
+                  <Link
+                    href={feedHref({ view, type, q })}
+                    className="inline-flex min-h-tap items-center text-sm font-medium text-ink-muted hover:text-navy-text"
+                  >
+                    Clear
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+          </details>
         ) : null}
-        <Button type="submit" variant="secondary" className="justify-self-start">
-          Apply filters
-        </Button>
       </form>
 
       {items.length === 0 ? (
