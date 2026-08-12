@@ -104,6 +104,7 @@ export async function getApplicationDetail(
     id: string;
     name: string;
     email: string;
+    image: string | null;
     role: Viewer["role"];
     status: Viewer["status"];
     statusReason: string | null;
@@ -159,6 +160,7 @@ export async function getApplicationDetail(
     id: user.id,
     name: user.name,
     email: user.email,
+    image: user.image,
     role: user.role,
     status: user.status,
     statusReason: user.statusReason,

@@ -14,6 +14,7 @@ export type Viewer = {
   id: string;
   name: string;
   email: string;
+  image: string | null;
   role: "member" | "admin" | "superadmin";
   status: "pending" | "approved" | "rejected" | "needs_changes" | "suspended";
 };
@@ -26,7 +27,14 @@ export type Viewer = {
 export async function getViewer(userId: string): Promise<Viewer | null> {
   const row = await db.query.users.findFirst({
     where: eq(tables.users.id, userId),
-    columns: { id: true, name: true, email: true, role: true, status: true },
+    columns: {
+      id: true,
+      name: true,
+      email: true,
+      image: true,
+      role: true,
+      status: true,
+    },
   });
   return row ?? null;
 }

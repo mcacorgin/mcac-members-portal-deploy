@@ -10,7 +10,7 @@ const securityHeaders = [
       "font-src 'self' data:",
       "form-action 'self'",
       "frame-ancestors 'none'",
-      "img-src 'self' data: blob:",
+      "img-src 'self' data: blob: https://*.licdn.com https://*.licdn-ei.com",
       "object-src 'none'",
       `script-src 'self' 'unsafe-inline'${
         process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""

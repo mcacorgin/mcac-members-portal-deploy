@@ -41,6 +41,40 @@ export type ComposerProps = {
 
 const MAX_TAGGED = 20;
 
+const PUBLISHING_LABELS: Record<PostTypeName, string> = {
+  opportunity: "Publishing opportunity…",
+  job: "Publishing job…",
+  knowledge: "Publishing knowledge post…",
+  event: "Publishing event…",
+};
+
+function SubmissionMask({ type }: { type: PostTypeName | "" }) {
+  const label = type ? PUBLISHING_LABELS[type] : "Publishing post…";
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      data-testid="share-processing-mask"
+      className="fixed inset-0 z-50 grid place-items-center bg-navy/35 px-4"
+    >
+      <div className="grid w-full max-w-sm justify-items-center gap-3 rounded-container border border-border bg-surface px-5 py-6 text-center shadow-[0_18px_55px_oklch(0.2_0.03_256/0.22)]">
+        <span
+          aria-hidden="true"
+          className="size-7 animate-spin rounded-full border-[3px] border-navy/20 border-r-navy motion-reduce:animate-none"
+        />
+        <div>
+          <p className="font-semibold text-ink">{label}</p>
+          <p className="mt-1 text-sm text-ink-secondary">
+            Keep this page open while MCAC saves your post and any attachment.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function mandateFieldErrors(formData: FormData): Record<string, string[]> {
   const parsed = mandateOpportunityMetadataSchema.safeParse(
     mandateOpportunityMetadataFromForm(formData),
@@ -248,7 +282,12 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
   const attachmentError = fileError ?? errFor("attachment");
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-5" noValidate>
+    <form
+      onSubmit={onSubmit}
+      className="grid gap-5"
+      aria-busy={pending}
+      noValidate
+    >
       <fieldset className="grid gap-2">
         <legend className="mb-1.5 block text-[13px] font-medium text-ink">
           What are you sharing?
@@ -537,9 +576,11 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
 
       <div>
         <Button type="submit" disabled={pending || !type} size="lg">
-          {pending ? "Publishing..." : "Publish"}
+          {pending ? "Publishing…" : "Publish"}
         </Button>
       </div>
+
+      {pending ? <SubmissionMask type={type} /> : null}
     </form>
   );
 }

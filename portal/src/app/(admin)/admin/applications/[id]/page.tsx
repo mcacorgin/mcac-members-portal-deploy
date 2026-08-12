@@ -111,7 +111,11 @@ export default async function ApplicationDetailPage({
         <div className="grid min-w-0 gap-4">
           <Card>
             <div className="flex flex-wrap items-center gap-3">
-              <Avatar name={record.name || record.email} size="lg" />
+              <Avatar
+                name={record.name || record.email}
+                src={record.image ?? undefined}
+                size="lg"
+              />
               <div className="min-w-0 flex-1">
                 <h2 className="truncate text-lg font-semibold text-ink">
                   {record.name || "Unnamed applicant"}
