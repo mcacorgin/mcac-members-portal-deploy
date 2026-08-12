@@ -1,8 +1,10 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+import Link from "next/link";
 import { BrandLockup } from "@/components/ui";
 import { MemberRailNav, MemberTabs } from "@/app/(member)/member-nav";
 import { NotificationMenu } from "@/app/(member)/notification-menu";
-import type { NotificationRow } from "@/lib/notifications/queries";
+import { listNotifications } from "@/lib/notifications/queries";
+import type { Viewer } from "@/lib/authz";
 
 // Shared rail/header/tabs shell, extracted mechanically from the (member)
 // layout so member and admin pages render inside the same chrome (the
@@ -13,11 +15,11 @@ import type { NotificationRow } from "@/lib/notifications/queries";
 
 export function PortalShell({
   isAdmin,
-  notificationPreview,
+  viewer,
   children,
 }: {
   isAdmin: boolean;
-  notificationPreview: { rows: NotificationRow[]; unread: number };
+  viewer: Viewer;
   children: ReactNode;
 }) {
   return (
@@ -43,10 +45,19 @@ export function PortalShell({
           {/* The desktop rail already carries the full lockup. */}
           <BrandLockup href="/" className="lg:hidden" />
           <span aria-hidden="true" className="hidden lg:block" />
-          <NotificationMenu
-            rows={notificationPreview.rows}
-            unread={notificationPreview.unread}
-          />
+          <div className="ml-auto flex items-center gap-2">
+            {isAdmin ? (
+              <Link
+                href="/admin"
+                className="inline-flex min-h-tap items-center rounded-control border border-border-strong bg-surface px-3 text-sm font-semibold text-navy-text transition-[background-color,scale] duration-150 ease-out-strong active:scale-[0.96] lg:hidden"
+              >
+                Admin
+              </Link>
+            ) : null}
+            <Suspense fallback={<NotificationMenuPending />}>
+              <NotificationMenuLoader viewer={viewer} />
+            </Suspense>
+          </div>
         </header>
 
         <main className="w-full flex-1 px-4 pt-6 pb-10 lg:px-9 lg:pb-14">
@@ -56,5 +67,29 @@ export function PortalShell({
         <MemberTabs />
       </div>
     </div>
+  );
+}
+
+async function NotificationMenuLoader({ viewer }: { viewer: Viewer }) {
+  const notifications = await listNotifications(viewer, { pageSize: 5 });
+  const preview = notifications.ok
+    ? notifications.data
+    : { rows: [], unread: 0 };
+  return <NotificationMenu rows={preview.rows} unread={preview.unread} />;
+}
+
+function NotificationMenuPending() {
+  return (
+    <button
+      type="button"
+      aria-label="Loading notifications"
+      disabled
+      className="grid size-tap place-items-center rounded-control border border-border text-ink-muted"
+    >
+      <span
+        aria-hidden="true"
+        className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none"
+      />
+    </button>
   );
 }

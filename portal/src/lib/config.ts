@@ -1,5 +1,5 @@
 import { db, tables, type DbOrTx } from "@/db";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 // Late-binding config registry (BUILD-PLAN.md). Every pending client decision
@@ -46,6 +46,24 @@ export async function getConfig<K extends ConfigKey>(
   return (
     parsed.success ? parsed.data : schema.parse(undefined)
   ) as ConfigValue<K>;
+}
+
+export async function getConfigs<const K extends readonly ConfigKey[]>(
+  keys: K,
+  dbOrTx: DbOrTx = db,
+): Promise<{ [P in K[number]]: ConfigValue<P> }> {
+  const rows = await dbOrTx
+    .select({ key: tables.appConfig.key, value: tables.appConfig.value })
+    .from(tables.appConfig)
+    .where(inArray(tables.appConfig.key, [...keys]));
+  const stored = new Map(rows.map((row) => [row.key, row.value]));
+  const values: Partial<Record<ConfigKey, unknown>> = {};
+  for (const key of keys) {
+    const schema = registry[key];
+    const parsed = schema.safeParse(stored.get(key));
+    values[key] = parsed.success ? parsed.data : schema.parse(undefined);
+  }
+  return values as { [P in K[number]]: ConfigValue<P> };
 }
 
 export async function setConfig<K extends ConfigKey>(

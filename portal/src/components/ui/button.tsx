@@ -35,7 +35,7 @@ const sizeClasses: Record<ButtonSize, string> = {
 };
 
 const baseClasses =
-  "inline-flex cursor-pointer select-none items-center justify-center gap-2 rounded-control font-medium no-underline transition-[color,background-color,border-color,scale] duration-150 ease-out-strong active:scale-[0.97] disabled:cursor-not-allowed aria-disabled:pointer-events-none aria-disabled:cursor-not-allowed";
+  "inline-flex cursor-pointer select-none items-center justify-center gap-2 rounded-control font-medium no-underline transition-[color,background-color,border-color,scale] duration-150 ease-out-strong active:scale-[0.96] disabled:cursor-not-allowed aria-disabled:pointer-events-none aria-disabled:cursor-not-allowed";
 
 export function Button(props: ButtonProps) {
   const { variant = "primary", size = "md", className, ...rest } = props;

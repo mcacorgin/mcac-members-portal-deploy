@@ -173,6 +173,11 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  button,
+  a {
+    touch-action: manipulation;
+  }
+
   :focus-visible {
     outline: none;
     box-shadow: var(--focus);
@@ -245,7 +250,13 @@ html[data-ui="polished"] .ui-button-primary {
 }
 
 html[data-ui="polished"] .ui-button:active {
-  transform: translateY(1px) scale(0.985);
+  transform: translateY(1px) scale(0.96);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ui-decision-reveal {
+    animation: ui-decision-in 160ms var(--ease-out-strong) both;
+  }
 }
 
 html[data-ui="polished"] .ui-auth-shell {
@@ -454,6 +465,18 @@ html[data-ui="polished"] .ui-notification-menu {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ui-decision-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
