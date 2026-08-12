@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
 import { adminAccessError } from "@/lib/authz";
 import { resolveLandingPath } from "@/lib/account/routing";
-import { listNotifications } from "@/lib/notifications/queries";
 import { PortalShell } from "@/components/portal-shell";
 import { AdminNav } from "./admin-nav";
 
@@ -25,13 +24,8 @@ export default async function AdminLayout({
   const denied = adminAccessError(viewer);
   if (denied) redirect(await resolveLandingPath(viewer));
 
-  const notifications = await listNotifications(viewer, { pageSize: 5 });
-  const notificationPreview = notifications.ok
-    ? notifications.data
-    : { rows: [], unread: 0 };
-
   return (
-    <PortalShell isAdmin notificationPreview={notificationPreview}>
+    <PortalShell isAdmin viewer={viewer!}>
       <div className="ui-admin-main mx-auto w-full max-w-5xl">
         <div className="mb-4 border-b border-border">
           <AdminNav />

@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
 import { hasAdminRole, memberAccessError } from "@/lib/authz";
 import { resolveLandingPath } from "@/lib/account/routing";
-import { listNotifications } from "@/lib/notifications/queries";
 import { PortalShell } from "@/components/portal-shell";
 
 // THE member shell (route group "(member)"). Guard first: only approved
@@ -26,14 +25,10 @@ export default async function MemberLayout({
   const denied = memberAccessError(viewer);
   if (denied) redirect(await resolveLandingPath(viewer));
 
-  const notifications = await listNotifications(viewer, { pageSize: 5 });
-  const notificationPreview = notifications.ok
-    ? notifications.data
-    : { rows: [], unread: 0 };
   const isAdmin = hasAdminRole(viewer!.role);
 
   return (
-    <PortalShell isAdmin={isAdmin} notificationPreview={notificationPreview}>
+    <PortalShell isAdmin={isAdmin} viewer={viewer!}>
       {children}
     </PortalShell>
   );

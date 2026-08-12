@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { BrandLockup } from "@/components/ui";
 import { MemberRailNav, MemberTabs } from "@/app/(member)/member-nav";
 import { NotificationMenu } from "@/app/(member)/notification-menu";
-import type { NotificationRow } from "@/lib/notifications/queries";
+import { listNotifications } from "@/lib/notifications/queries";
+import type { Viewer } from "@/lib/authz";
 
 // Shared rail/header/tabs shell, extracted mechanically from the (member)
 // layout so member and admin pages render inside the same chrome (the
@@ -14,11 +15,11 @@ import type { NotificationRow } from "@/lib/notifications/queries";
 
 export function PortalShell({
   isAdmin,
-  notificationPreview,
+  viewer,
   children,
 }: {
   isAdmin: boolean;
-  notificationPreview: { rows: NotificationRow[]; unread: number };
+  viewer: Viewer;
   children: ReactNode;
 }) {
   return (
@@ -53,10 +54,9 @@ export function PortalShell({
                 Admin
               </Link>
             ) : null}
-            <NotificationMenu
-              rows={notificationPreview.rows}
-              unread={notificationPreview.unread}
-            />
+            <Suspense fallback={<NotificationMenuPending />}>
+              <NotificationMenuLoader viewer={viewer} />
+            </Suspense>
           </div>
         </header>
 
@@ -67,5 +67,29 @@ export function PortalShell({
         <MemberTabs />
       </div>
     </div>
+  );
+}
+
+async function NotificationMenuLoader({ viewer }: { viewer: Viewer }) {
+  const notifications = await listNotifications(viewer, { pageSize: 5 });
+  const preview = notifications.ok
+    ? notifications.data
+    : { rows: [], unread: 0 };
+  return <NotificationMenu rows={preview.rows} unread={preview.unread} />;
+}
+
+function NotificationMenuPending() {
+  return (
+    <button
+      type="button"
+      aria-label="Loading notifications"
+      disabled
+      className="grid size-tap place-items-center rounded-control border border-border text-ink-muted"
+    >
+      <span
+        aria-hidden="true"
+        className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none"
+      />
+    </button>
   );
 }

@@ -121,7 +121,18 @@ export default async function HomePage({
   const geography = first(sp.geography)?.trim().slice(0, 160) || undefined;
   const pageNum = Math.max(1, Number.parseInt(first(sp.page) ?? "1", 10) || 1);
 
-  const enabledTypes = await enabledSections(viewer!.id);
+  const [enabledTypes, result] = await Promise.all([
+    enabledSections(viewer!.id),
+    listFeed(viewer, {
+      view,
+      type,
+      search: q,
+      mandateType,
+      industry,
+      geography,
+      page: pageNum,
+    }),
+  ]);
 
   const header = (
     <PageHeader
@@ -142,16 +153,6 @@ export default async function HomePage({
       </div>
     );
   }
-
-  const result = await listFeed(viewer, {
-    view,
-    type,
-    search: q,
-    mandateType,
-    industry,
-    geography,
-    page: pageNum,
-  });
 
   if (!result.ok) {
     return (
