@@ -6,7 +6,7 @@ import { requireViewer } from "@/lib/auth";
 import { getApplicationDetail } from "@/lib/admin/queries";
 import { getEvidenceStatus } from "@/lib/account/registration";
 import { getDirectoryFilters } from "@/lib/directory/queries";
-import { getConfig } from "@/lib/config";
+import { getConfigs } from "@/lib/config";
 import type { Section } from "@/lib/authz";
 import {
   Avatar,
@@ -39,7 +39,21 @@ export default async function ApplicationDetailPage({
   const { id } = await params;
   const viewer = await requireViewer();
 
-  const detail = await getApplicationDetail(viewer, id);
+  const [detail, filters, overrideRows, evidence, sectionConfig] =
+    await Promise.all([
+      getApplicationDetail(viewer, id),
+      getDirectoryFilters(viewer),
+      db.query.memberSectionOverrides.findMany({
+        where: eq(tables.memberSectionOverrides.userId, id),
+      }),
+      getEvidenceStatus(id),
+      getConfigs([
+        "sections.opportunity",
+        "sections.job",
+        "sections.knowledge",
+        "sections.event",
+      ] as const),
+    ]);
   if (!detail.ok) {
     if (detail.code === "not_found") notFound();
     return (
@@ -70,26 +84,15 @@ export default async function ApplicationDetailPage({
     }
   })();
 
-  const [filters, overrideRows, evidence, ...globalFlags] = await Promise.all([
-    getDirectoryFilters(viewer),
-    db.query.memberSectionOverrides.findMany({
-      where: eq(tables.memberSectionOverrides.userId, id),
-    }),
-    getEvidenceStatus(record.id),
-    getConfig("sections.opportunity"),
-    getConfig("sections.job"),
-    getConfig("sections.knowledge"),
-    getConfig("sections.event"),
-  ]);
   const allTags = filters.ok ? filters.data.tags : record.tags;
   const overrides: Partial<Record<Section, boolean>> = {};
   for (const row of overrideRows)
     overrides[row.section as Section] = row.enabled;
   const globals: Record<Section, boolean> = {
-    opportunity: globalFlags[0],
-    job: globalFlags[1],
-    knowledge: globalFlags[2],
-    event: globalFlags[3],
+    opportunity: sectionConfig["sections.opportunity"],
+    job: sectionConfig["sections.job"],
+    knowledge: sectionConfig["sections.knowledge"],
+    event: sectionConfig["sections.event"],
   };
 
   return (
@@ -283,7 +286,7 @@ export default async function ApplicationDetailPage({
           />
         </div>
 
-        <div className="grid gap-4 lg:sticky lg:top-4">
+        <div className="order-first grid gap-4 lg:order-none lg:sticky lg:top-4">
           <DecisionPanel
             userId={record.id}
             status={record.status}

@@ -43,6 +43,18 @@ const REASON_DECISIONS: Record<string, ReasonDecision> = {
   },
 };
 
+function PendingLabel({ children }: { children: string }) {
+  return (
+    <>
+      <span
+        aria-hidden="true"
+        className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none"
+      />
+      {children}
+    </>
+  );
+}
+
 export function DecisionPanel({
   userId,
   status,
@@ -113,7 +125,7 @@ export function DecisionPanel({
     status === "pending" || status === "needs_changes";
 
   return (
-    <Card data-testid="decision-panel">
+    <Card data-testid="decision-panel" aria-busy={pending}>
       <h3 className="mb-1 text-base font-semibold text-ink">Decision</h3>
       <p className="mb-3 text-sm text-ink-secondary">
         Every decision is recorded in the audit log with your name.
@@ -217,7 +229,7 @@ export function DecisionPanel({
       {confirming ? (
         <div
           ref={confirmationRef}
-          className={`mt-3 rounded-container border p-3 ${
+          className={`ui-decision-reveal mt-3 rounded-container border p-3 ${
             confirming === "rejected"
               ? "border-danger/35 bg-danger-bg"
               : "border-border bg-surface-subtle"
@@ -266,7 +278,7 @@ export function DecisionPanel({
               }
             >
               {pending
-                ? "Saving..."
+                ? <PendingLabel>Saving...</PendingLabel>
                 : confirming === "approved"
                   ? "Approve application"
                   : "Reject application"}
@@ -327,7 +339,7 @@ export function DecisionPanel({
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={pending} data-testid="confirm-decision">
               {pending
-                ? "Saving..."
+                ? <PendingLabel>Saving...</PendingLabel>
                 : mode === "rejected"
                   ? "Review rejection"
                   : REASON_DECISIONS[mode].confirmLabel}

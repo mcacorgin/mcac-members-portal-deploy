@@ -79,7 +79,70 @@ export default async function AdminOverviewPage() {
           body="New registrations appear here as soon as they are submitted."
         />
       ) : (
-        <Card className="ui-table-card relative overflow-x-auto p-0">
+        <>
+          <ul
+            className="grid gap-3 md:hidden"
+            data-testid="review-queue-mobile"
+          >
+            {queue.data.map((row) => {
+              const name = row.name || "Unnamed applicant";
+              return (
+                <li key={row.id}>
+                  <Link
+                    href={`/admin/applications/${row.id}`}
+                    aria-label={`Review application from ${name}`}
+                    className="ui-review-card block min-h-tap rounded-container border border-border bg-surface p-4 shadow-card transition-[background-color,border-color,scale] duration-150 ease-out-strong active:scale-[0.98]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-ink">{name}</p>
+                        <p className="mt-0.5 truncate text-sm text-ink-secondary">
+                          {row.email}
+                        </p>
+                      </div>
+                      <StatusBadge
+                        status={
+                          row.status === "needs_changes"
+                            ? "needs-changes"
+                            : "pending"
+                        }
+                      />
+                    </div>
+                    <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <dt className="text-xs text-ink-muted">Submitted</dt>
+                        <dd className="text-ink-secondary">
+                          {formatDate(row.createdAt)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-ink-muted">City</dt>
+                        <dd className="text-ink-secondary">{row.city || "—"}</dd>
+                      </div>
+                      <div className="col-span-2">
+                        <dt className="text-xs text-ink-muted">Privacy notice</dt>
+                        <dd
+                          className={
+                            row.consented ? "text-success" : "text-warning"
+                          }
+                        >
+                          {row.consented
+                            ? "Accepted current notice"
+                            : "Not yet accepted"}
+                        </dd>
+                      </div>
+                    </dl>
+                    <span className="mt-4 flex min-h-tap items-center justify-between border-t border-border pt-3 font-semibold text-navy-text">
+                      Review application
+                      <span aria-hidden="true">&rarr;</span>
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          <Card className="ui-table-card relative hidden overflow-x-auto p-0 md:block">
           <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs text-ink-muted">
@@ -187,7 +250,8 @@ export default async function AdminOverviewPage() {
               })}
             </tbody>
           </table>
-        </Card>
+          </Card>
+        </>
       )}
     </div>
   );

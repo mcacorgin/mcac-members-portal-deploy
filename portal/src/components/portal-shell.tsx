@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { BrandLockup } from "@/components/ui";
 import { MemberRailNav, MemberTabs } from "@/app/(member)/member-nav";
 import { NotificationMenu } from "@/app/(member)/notification-menu";
@@ -43,10 +44,20 @@ export function PortalShell({
           {/* The desktop rail already carries the full lockup. */}
           <BrandLockup href="/" className="lg:hidden" />
           <span aria-hidden="true" className="hidden lg:block" />
-          <NotificationMenu
-            rows={notificationPreview.rows}
-            unread={notificationPreview.unread}
-          />
+          <div className="ml-auto flex items-center gap-2">
+            {isAdmin ? (
+              <Link
+                href="/admin"
+                className="inline-flex min-h-tap items-center rounded-control border border-border-strong bg-surface px-3 text-sm font-semibold text-navy-text transition-[background-color,scale] duration-150 ease-out-strong active:scale-[0.96] lg:hidden"
+              >
+                Admin
+              </Link>
+            ) : null}
+            <NotificationMenu
+              rows={notificationPreview.rows}
+              unread={notificationPreview.unread}
+            />
+          </div>
         </header>
 
         <main className="w-full flex-1 px-4 pt-6 pb-10 lg:px-9 lg:pb-14">

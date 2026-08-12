@@ -49,28 +49,29 @@ export async function listReviewQueue(
   const denied = adminAccessError(admin);
   if (denied) return err(denied, "Administrator access is required.");
 
-  const rows = await db
-    .select({
-      id: tables.users.id,
-      name: tables.users.name,
-      email: tables.users.email,
-      status: tables.users.status,
-      createdAt: tables.users.createdAt,
-      city: tables.profiles.city,
-    })
-    .from(tables.users)
-    .leftJoin(tables.profiles, eq(tables.profiles.userId, tables.users.id))
-    .where(
-      or(
-        eq(tables.users.status, "pending"),
-        eq(tables.users.status, "needs_changes"),
-      ),
-    )
-    .orderBy(asc(tables.users.createdAt));
-
-  const current = await db.query.privacyNotices.findFirst({
-    where: eq(tables.privacyNotices.isCurrent, true),
-  });
+  const [rows, current] = await Promise.all([
+    db
+      .select({
+        id: tables.users.id,
+        name: tables.users.name,
+        email: tables.users.email,
+        status: tables.users.status,
+        createdAt: tables.users.createdAt,
+        city: tables.profiles.city,
+      })
+      .from(tables.users)
+      .leftJoin(tables.profiles, eq(tables.profiles.userId, tables.users.id))
+      .where(
+        or(
+          eq(tables.users.status, "pending"),
+          eq(tables.users.status, "needs_changes"),
+        ),
+      )
+      .orderBy(asc(tables.users.createdAt)),
+    db.query.privacyNotices.findFirst({
+      where: eq(tables.privacyNotices.isCurrent, true),
+    }),
+  ]);
   const ids = rows.map((r) => r.id);
   const consents = current && ids.length
     ? await db.query.consentRecords.findMany({
@@ -131,12 +132,10 @@ export async function getApplicationDetail(
   const denied = adminAccessError(admin);
   if (denied) return err(denied, "Administrator access is required.");
 
-  const user = await db.query.users.findFirst({
-    where: eq(tables.users.id, userId),
-  });
-  if (!user) return err("not_found", "Account not found.");
-
-  const [profile, tagRows, consentRows, current] = await Promise.all([
+  const [user, profile, tagRows, consentRows, current] = await Promise.all([
+    db.query.users.findFirst({
+      where: eq(tables.users.id, userId),
+    }),
     db.query.profiles.findFirst({ where: eq(tables.profiles.userId, userId) }),
     db
       .select({ id: tables.expertiseTags.id, label: tables.expertiseTags.label })
@@ -154,6 +153,7 @@ export async function getApplicationDetail(
       where: eq(tables.privacyNotices.isCurrent, true),
     }),
   ]);
+  if (!user) return err("not_found", "Account not found.");
 
   return ok({
     id: user.id,
