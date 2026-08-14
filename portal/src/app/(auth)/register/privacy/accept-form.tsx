@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Button, Checkbox, FieldError } from "@/components/ui";
+import { ConsentCheckbox } from "@/components/consent-checkbox";
+import { Button, FieldError } from "@/components/ui";
 import { acceptNoticeAction, type AcceptNoticeState } from "./actions";
 
 const initialState: AcceptNoticeState = {};
@@ -52,7 +53,7 @@ export function AcceptForm({
   }
 
   return (
-    <form action={formAction} className="grid gap-3">
+    <form action={formAction} className="grid gap-3.5">
       <input type="hidden" name="version" value={version} />
       {state.conflict ? (
         <p
@@ -64,26 +65,33 @@ export function AcceptForm({
         </p>
       ) : null}
       <FieldError>{state.error}</FieldError>
-      <Checkbox
+      <ConsentCheckbox
         name="accept"
         checked={checked}
         onChange={(event) => setChecked(event.target.checked)}
-        label="I have read the MCAC Privacy Notice and consent to the processing of my personal information for evaluating and managing my MCAC membership."
-        description="Required. This checkbox starts unselected every time the decision is required."
+        requiredChoice
+        label="I agree to MCAC processing my information to evaluate and manage my membership."
+        onDescription="your membership application can continue."
+        offDescription="your application cannot continue."
+        footer="Required. This always starts off when a new notice version needs your agreement."
       />
-      <Checkbox
+      <ConsentCheckbox
         name="directory"
         checked={directory}
         onChange={(event) => setDirectory(event.target.checked)}
-        label="I agree that my name, professional designation, organisation, areas of expertise and LinkedIn profile may be visible to other MCAC members for professional networking and collaboration."
-        description="Optional. Without this you are not listed in the member directory or its search, and cannot be tagged in posts. Anything you publish yourself still carries your name and photo."
+        label="List me in the MCAC member directory"
+        onDescription="approved members can find you in People and search, and tag you in posts."
+        offDescription="you stay out of People, member search, and post tagging."
+        footer="Optional. Posts you publish still show your name and photo. Change this later in Me → Edit profile."
       />
-      <Checkbox
+      <ConsentCheckbox
         name="communications"
         checked={communications}
         onChange={(event) => setCommunications(event.target.checked)}
-        label="I would like to receive information about MCAC events, initiatives, opportunities and community activities."
-        description="Optional. Leaving this unselected does not affect your application, and you can change it later from your profile."
+        label="Send me MCAC community updates"
+        onDescription="you may receive information about events, initiatives, opportunities, and community activities."
+        offDescription="you will not receive these optional updates."
+        footer="Optional. This never affects your application or membership. Change it later in Me → Edit profile."
       />
       <Button
         type="submit"
