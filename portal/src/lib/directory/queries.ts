@@ -97,7 +97,13 @@ export async function searchMembers(
   const pageSize = Math.min(50, Math.max(1, input.pageSize ?? 20));
   const q = input.q?.trim().slice(0, 200);
 
-  const conditions = [eq(tables.users.status, "approved" as const)];
+  // Directory consent (AUTH-02) is a listing gate, not a field mask: a member
+  // who withheld it is absent from the directory, its search, and the share
+  // picker that reuses this query. It never hides authorship of a post.
+  const conditions = [
+    eq(tables.users.status, "approved" as const),
+    eq(tables.profiles.directoryListed, true),
+  ];
   const terms = q ? expandQuery(q) : [];
   let exactMatch: SQL | undefined;
   if (q) {
@@ -262,6 +268,7 @@ export async function getMemberProfile(
       phoneVisibility: tables.profiles.phoneVisibility,
       emailVisibility: tables.profiles.emailVisibility,
       linkedinVisibility: tables.profiles.linkedinVisibility,
+      directoryListed: tables.profiles.directoryListed,
     })
     .from(tables.users)
     .innerJoin(tables.profiles, eq(tables.profiles.userId, tables.users.id))
@@ -271,6 +278,10 @@ export async function getMemberProfile(
   const isSelf = viewer!.id === memberId;
   const isAdmin = hasAdminRole(viewer!.role);
   if (!member || (member.status !== "approved" && !isSelf && !isAdmin))
+    return err("not_found", "This member profile is not available.");
+  // Hiding the row from the list but serving it by direct link would make the
+  // consent decorative. Owners and administrators still reach it.
+  if (!member.directoryListed && !isSelf && !isAdmin)
     return err("not_found", "This member profile is not available.");
 
   const tagRows = await db
@@ -307,7 +318,12 @@ export async function getDirectoryFilters(viewer: Viewer | null): Promise<
       .selectDistinct({ city: tables.profiles.city })
       .from(tables.profiles)
       .innerJoin(tables.users, eq(tables.users.id, tables.profiles.userId))
-      .where(eq(tables.users.status, "approved"))
+      .where(
+        and(
+          eq(tables.users.status, "approved"),
+          eq(tables.profiles.directoryListed, true),
+        ),
+      )
       .orderBy(asc(tables.profiles.city)),
     db
       .select({ id: tables.expertiseTags.id, label: tables.expertiseTags.label })

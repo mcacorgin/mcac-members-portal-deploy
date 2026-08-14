@@ -180,6 +180,28 @@ export const profiles = pgTable("profiles", {
   // AUTH-03: set when the member explicitly records per-field visibility
   // choices; the flow does not proceed past contact-visibility until then.
   contactChoicesAt: timestamp("contact_choices_at", { mode: "date" }),
+  // AUTH-02: the optional communications consent offered by the privacy
+  // notice of 2026-08-15. Independent of the mandatory processing consent -
+  // registration never depends on it - and withdrawable from /me/edit, which
+  // is what makes section 10 of the notice ("a mechanism ... comparable to
+  // the mechanism through which consent was provided") true.
+  communicationsOptIn: boolean("communications_opt_in")
+    .notNull()
+    .default(false),
+  // Set on every recorded decision, opt-in or withdrawal, so a `false` that
+  // was chosen is distinguishable from a `false` nobody ever answered. The
+  // decision history itself lives in audit_log.
+  communicationsDecidedAt: timestamp("communications_decided_at", {
+    mode: "date",
+  }),
+  // AUTH-02: the member-directory consent from the same notice. False hides
+  // the member from /people, member search, and the share picker; it never
+  // hides authorship of anything they chose to publish. New rows default to
+  // false because listing is consented to, not assumed; accounts that predate
+  // the notice were backfilled to true in migration 0008 and keep their
+  // existing listing until they answer (directory_decided_at is then null).
+  directoryListed: boolean("directory_listed").notNull().default(false),
+  directoryDecidedAt: timestamp("directory_decided_at", { mode: "date" }),
   // Set when the applicant submits their application evidence (pre-approval since 2026-07-30). Column keeps its historical name; rename deferred until a coherent migration window.
   onboardingCompletedAt: timestamp("onboarding_completed_at", { mode: "date" }),
 });

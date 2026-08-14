@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
 import { acceptCurrentNotice } from "@/lib/account/registration";
+import { resolveLandingPath } from "@/lib/account/routing";
 
 export type AcceptNoticeState = { conflict?: boolean; error?: string };
 
@@ -28,7 +29,10 @@ export async function acceptNoticeAction(
   if (!Number.isInteger(version))
     return { error: "Reload the page and try again." };
 
-  const result = await acceptCurrentNotice(viewer, version);
+  const result = await acceptCurrentNotice(viewer, version, {
+    communications: formData.get("communications") === "on",
+    directory: formData.get("directory") === "on",
+  });
   if (!result.ok) {
     if (result.code === "conflict") {
       revalidatePath("/register/privacy");
@@ -36,5 +40,10 @@ export async function acceptNoticeAction(
     }
     return { error: result.message };
   }
-  redirect("/register/contact-visibility");
+
+  // Route through the lifecycle resolver rather than hard-coding the next
+  // step: a member re-accepting a NEW notice version has already recorded
+  // contact choices, and sending them back through that form would offer
+  // default values over the choices they made.
+  redirect(await resolveLandingPath(viewer));
 }
