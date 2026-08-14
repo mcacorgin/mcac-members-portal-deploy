@@ -9,6 +9,8 @@ export type CheckboxProps = Omit<
   label: ReactNode;
   /** Optional secondary line under the label. */
   description?: ReactNode;
+  /** Optional visual treatment for the native checkbox indicator. */
+  inputClassName?: string;
 };
 
 /**
@@ -19,6 +21,7 @@ export function Checkbox({
   label,
   description,
   className,
+  inputClassName,
   ...props
 }: CheckboxProps) {
   return (
@@ -31,7 +34,7 @@ export function Checkbox({
       <input
         {...props}
         type="checkbox"
-        className="mt-0.5 size-5 accent-navy"
+        className={cx("mt-0.5 size-5 accent-navy", inputClassName)}
       />
       <span className="font-medium text-ink">
         {label}

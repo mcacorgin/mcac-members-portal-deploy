@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Button, Checkbox } from "@/components/ui";
+import { ConsentCheckbox } from "@/components/consent-checkbox";
+import { Button } from "@/components/ui";
 import type { ActionResult } from "@/lib/contracts/result";
 import { saveOptionalConsentsAction } from "@/app/consent-actions";
 
@@ -43,19 +44,23 @@ export function OptionalConsentsForm({
         </p>
       ) : null}
 
-      <Checkbox
+      <ConsentCheckbox
         name="directory"
         checked={directory}
         onChange={(event) => setDirectory(event.target.checked)}
-        label="I agree that my name, professional designation, organisation, areas of expertise and LinkedIn profile may be visible to other MCAC members for professional networking and collaboration."
-        description="Unselecting this removes you from the member directory and its search, and removes you from posts you were tagged in. Anything you published yourself still carries your name and photo."
+        label="List me in the MCAC member directory"
+        onDescription="approved members can find you in People and search, and tag you in posts."
+        offDescription="you stay out of People, member search, and post tagging."
+        footer="Posts you publish still show your name and photo."
       />
-      <Checkbox
+      <ConsentCheckbox
         name="communications"
         checked={communications}
         onChange={(event) => setCommunications(event.target.checked)}
-        label="I would like to receive information about MCAC events, initiatives, opportunities and community activities."
-        description="Unselecting this withdraws your consent for these messages; it does not affect your membership."
+        label="Send me MCAC community updates"
+        onDescription="you may receive information about events, initiatives, opportunities, and community activities."
+        offDescription="you will not receive these optional updates."
+        footer="This never affects your application or membership."
       />
 
       <div>
