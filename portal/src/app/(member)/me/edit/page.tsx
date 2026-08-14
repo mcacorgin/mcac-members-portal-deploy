@@ -6,6 +6,8 @@ import { memberAccessError } from "@/lib/authz";
 import { resolveLandingPath } from "@/lib/account/routing";
 import { getDirectoryFilters } from "@/lib/directory/queries";
 import { Button, Card, ErrorState, PageHeader, ScreenId } from "@/components/ui";
+
+import { OptionalConsentsForm } from "@/components/optional-consents-form";
 import { ProfileForm } from "../profile-form";
 import { VisibilityForm } from "../visibility-form";
 
@@ -102,6 +104,22 @@ export default async function MeEditPage() {
             phone: profile.phoneVisibility,
             email: profile.emailVisibility,
             linkedin: profile.linkedinVisibility,
+          }}
+        />
+      </Card>
+
+      <Card>
+        <h3 className="mb-1 text-base font-semibold text-ink">
+          Privacy notice choices
+        </h3>
+        <p className="mb-3 text-[13px] text-ink-secondary">
+          The two optional consents from the privacy notice. Change either at
+          any time; withdrawing takes effect from the moment you save.
+        </p>
+        <OptionalConsentsForm
+          choices={{
+            communications: profile.communicationsOptIn,
+            directory: profile.directoryListed,
           }}
         />
       </Card>

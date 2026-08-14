@@ -1,8 +1,12 @@
 import { redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
-import { getApplicationState } from "@/lib/account/registration";
+import {
+  getApplicationState,
+  getOptionalConsents,
+} from "@/lib/account/registration";
 import { resolveLandingPath } from "@/lib/account/routing";
 import { Button, Card, PageHeader, ScreenId, StatusBadge } from "@/components/ui";
+import { OptionalConsentsForm } from "@/components/optional-consents-form";
 import { PendingButton } from "../../_components/pending-button";
 import { signOutAction } from "../../actions";
 
@@ -21,7 +25,10 @@ export default async function StatusPage() {
   const landing = await resolveLandingPath(viewer);
   if (landing !== "/application/status") redirect(landing);
 
-  const state = await getApplicationState(viewer);
+  const [state, consentChoices] = await Promise.all([
+    getApplicationState(viewer),
+    getOptionalConsents(viewer),
+  ]);
 
   const content =
     viewer.status === "needs_changes" ? (
@@ -104,6 +111,16 @@ export default async function StatusPage() {
             Sign out
           </PendingButton>
         </form>
+      </Card>
+      <Card className="grid gap-3 p-5">
+        <h3 className="text-base font-semibold text-ink">
+          Privacy notice choices
+        </h3>
+        <p className="text-[13px] text-ink-secondary">
+          The two optional consents from the privacy notice. Change either at
+          any time, whatever happens to your application.
+        </p>
+        <OptionalConsentsForm choices={consentChoices} />
       </Card>
     </div>
   );

@@ -296,7 +296,18 @@ export async function getPostDetail(
         tables.users,
         eq(tables.postTaggedMembers.userId, tables.users.id),
       )
-      .where(eq(tables.postTaggedMembers.postId, postId)),
+      .innerJoin(
+        tables.profiles,
+        eq(tables.profiles.userId, tables.users.id),
+      )
+      // Withdrawal has to reach tags made earlier, or the consent only holds
+      // for members nobody had tagged yet.
+      .where(
+        and(
+          eq(tables.postTaggedMembers.postId, postId),
+          eq(tables.profiles.directoryListed, true),
+        ),
+      ),
     db
       .select({
         id: tables.attachments.id,

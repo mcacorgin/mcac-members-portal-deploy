@@ -65,13 +65,17 @@ export async function createPost(
     });
   }
   if (taggedUserIds.length > 0) {
+    // Directory consent gates this too: the picker hides unlisted members, and
+    // a hand-crafted submission must not put their name on a post either.
     const approved = await db
       .select({ id: tables.users.id })
       .from(tables.users)
+      .innerJoin(tables.profiles, eq(tables.profiles.userId, tables.users.id))
       .where(
         and(
           inArray(tables.users.id, taggedUserIds),
           eq(tables.users.status, "approved"),
+          eq(tables.profiles.directoryListed, true),
         ),
       );
     if (approved.length !== taggedUserIds.length) {

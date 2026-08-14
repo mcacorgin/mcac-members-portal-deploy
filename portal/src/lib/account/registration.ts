@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { db, tables } from "@/db";
+import { db, tables, type DbOrTx } from "@/db";
 import { getConfig } from "@/lib/config";
 import { sendMail } from "@/lib/mail";
 import { recordAudit } from "@/lib/audit";
@@ -97,6 +97,7 @@ export async function hasCurrentConsent(userId: string): Promise<boolean> {
 export async function acceptCurrentNotice(
   viewer: Viewer | null,
   acceptedVersion: number,
+  optionalChoices?: { communications: boolean; directory: boolean },
 ): Promise<ActionResult> {
   if (!viewer) return err("unauthorized", "Sign in to continue.");
   const notice = await getCurrentNotice();
@@ -106,12 +107,53 @@ export async function acceptCurrentNotice(
       "conflict",
       "The privacy notice changed while you were reading. Review the current version.",
     );
-  if (!(await hasCurrentConsent(viewer.id))) {
-    await db.insert(tables.consentRecords).values({
-      userId: viewer.id,
-      noticeVersion: notice.version,
+  // One transaction: the notice puts the optional communications consent on
+  // the same screen as the mandatory one, and a half-written pair would leave
+  // an applicant past the gate with the choice they made silently dropped.
+  let conflicted = false;
+  await db.transaction(async (tx) => {
+    // Re-read inside the transaction: a version published between the check
+    // above and this write would otherwise be accepted as the stale one, and
+    // the applicant would land past a gate they never actually passed.
+    const current = await tx.query.privacyNotices.findFirst({
+      where: eq(tables.privacyNotices.isCurrent, true),
     });
-  }
+    if (!current || current.version !== acceptedVersion) {
+      conflicted = true;
+      return;
+    }
+    const existing = await tx.query.consentRecords.findFirst({
+      where: and(
+        eq(tables.consentRecords.userId, viewer.id),
+        eq(tables.consentRecords.noticeVersion, notice.version),
+      ),
+    });
+    if (!existing) {
+      await tx.insert(tables.consentRecords).values({
+        userId: viewer.id,
+        noticeVersion: notice.version,
+      });
+    }
+    if (optionalChoices) {
+      await writeCommunicationsDecision(
+        viewer.id,
+        optionalChoices.communications,
+        notice.version,
+        tx,
+      );
+      await writeDirectoryDecision(
+        viewer.id,
+        optionalChoices.directory,
+        notice.version,
+        tx,
+      );
+    }
+  });
+  if (conflicted)
+    return err(
+      "conflict",
+      "The privacy notice changed while you were reading. Review the current version.",
+    );
   return ok(undefined);
 }
 
@@ -144,6 +186,120 @@ export async function updateContactVisibility(
     })
     .where(eq(tables.profiles.userId, viewer.id));
   return ok(undefined);
+}
+
+/**
+ * Write one communications decision. The profile row carries the current
+ * answer; audit_log carries the history, which is what lets MCAC show when a
+ * member opted in, when they withdrew, and against which notice version.
+ */
+async function writeCommunicationsDecision(
+  userId: string,
+  optIn: boolean,
+  noticeVersion: number | null,
+  dbOrTx: DbOrTx = db,
+): Promise<void> {
+  await dbOrTx
+    .update(tables.profiles)
+    .set({ communicationsOptIn: optIn, communicationsDecidedAt: new Date() })
+    .where(eq(tables.profiles.userId, userId));
+  await recordAudit(
+    {
+      actorId: userId,
+      action: "account.communications_consent",
+      subjectType: "user",
+      subjectId: userId,
+      detail: { optIn, noticeVersion },
+    },
+    dbOrTx,
+  );
+}
+
+/**
+ * Optional communications consent (AUTH-02). The notice offers it beside the
+ * mandatory processing consent, and it gates nothing: opting out changes
+ * nothing about the account. Section 10 promises withdrawal through a
+ * comparable mechanism, so this stays callable for every signed-in account,
+ * not only approved members.
+ */
+export async function setCommunicationsOptIn(
+  viewer: Viewer | null,
+  optIn: boolean,
+): Promise<ActionResult> {
+  if (!viewer) return err("unauthorized", "Sign in to continue.");
+  const notice = await getCurrentNotice();
+  await writeCommunicationsDecision(viewer.id, optIn, notice?.version ?? null);
+  return ok(undefined);
+}
+
+/**
+ * Write one member-directory decision. Same shape as the communications
+ * decision: current answer on the profile, history in audit_log.
+ */
+async function writeDirectoryDecision(
+  userId: string,
+  listed: boolean,
+  noticeVersion: number | null,
+  dbOrTx: DbOrTx = db,
+): Promise<void> {
+  await dbOrTx
+    .update(tables.profiles)
+    .set({ directoryListed: listed, directoryDecidedAt: new Date() })
+    .where(eq(tables.profiles.userId, userId));
+  await recordAudit(
+    {
+      actorId: userId,
+      action: "account.directory_consent",
+      subjectType: "user",
+      subjectId: userId,
+      detail: { listed, noticeVersion },
+    },
+    dbOrTx,
+  );
+}
+
+/**
+ * Member-directory consent (AUTH-02). Withholding it removes the member from
+ * the directory, its search, and the share picker; it never hides authorship
+ * of a post they published.
+ */
+export async function setDirectoryListed(
+  viewer: Viewer | null,
+  listed: boolean,
+): Promise<ActionResult> {
+  if (!viewer) return err("unauthorized", "Sign in to continue.");
+  const notice = await getCurrentNotice();
+  await writeDirectoryDecision(viewer.id, listed, notice?.version ?? null);
+  return ok(undefined);
+}
+
+/**
+ * Current optional consent choices for the owner (AUTH-02, HOME-04).
+ *
+ * `directory` is the effective state - whether the member is listed today.
+ * `directoryDecided` says whether that state came from the member. Accounts
+ * created before the 2026-08-15 notice were backfilled as listed without ever
+ * being asked, and re-presenting that as a ticked consent box would record an
+ * affirmative answer they never gave.
+ */
+export async function getOptionalConsents(viewer: Viewer): Promise<{
+  communications: boolean;
+  directory: boolean;
+  directoryDecided: boolean;
+}> {
+  const profile = await db.query.profiles.findFirst({
+    where: eq(tables.profiles.userId, viewer.id),
+    columns: {
+      communicationsOptIn: true,
+      directoryListed: true,
+      directoryDecidedAt: true,
+    },
+  });
+  return {
+    communications: profile?.communicationsOptIn ?? false,
+    directory: profile?.directoryListed ?? false,
+    directoryDecided: Boolean(profile?.directoryDecidedAt),
+  };
 }
 
 /** Current per-field visibility settings for the owner (AUTH-03, HOME-04). */

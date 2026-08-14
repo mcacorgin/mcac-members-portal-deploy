@@ -50,6 +50,20 @@
       "when": 1786452342104,
       "tag": "0006_attachment_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786688501191,
+      "tag": "0007_communications_consent",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786690623665,
+      "tag": "0008_directory_consent",
+      "breakpoints": true
     }
   ]
 }

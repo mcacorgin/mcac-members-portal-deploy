@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
 import {
   getCurrentNotice,
+  getOptionalConsents,
   hasCurrentConsent,
 } from "@/lib/account/registration";
 import { resolveLandingPath } from "@/lib/account/routing";
@@ -16,7 +17,10 @@ export default async function PrivacyPage() {
   if (await hasCurrentConsent(viewer.id))
     redirect(await resolveLandingPath(viewer));
 
-  const notice = await getCurrentNotice();
+  const [notice, choices] = await Promise.all([
+    getCurrentNotice(),
+    getOptionalConsents(viewer),
+  ]);
   const isInterim = Boolean(
     notice && /INTERIM PRIVACY DISCLOSURE/i.test(notice.body),
   );
@@ -57,7 +61,7 @@ export default async function PrivacyPage() {
             </p>
           </Card>
           <Card className="p-5">
-            <AcceptForm version={notice.version} />
+            <AcceptForm version={notice.version} choices={choices} />
           </Card>
         </>
       )}
