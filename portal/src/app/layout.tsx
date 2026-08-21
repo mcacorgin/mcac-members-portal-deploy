@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import {
   resolveUiVariant,
   uiVariantBootstrap,
@@ -49,6 +50,7 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-full flex-col bg-bg text-ink">
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
