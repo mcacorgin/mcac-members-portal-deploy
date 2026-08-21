@@ -122,24 +122,27 @@ export default async function PrivacyPage() {
                   Required for membership
                 </h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                  Reviewing applications, maintaining accounts, protecting the
-                  service, and responding to requests or grievances.
+                  Reviewing applications, maintaining accounts, operating the
+                  private member directory, protecting the service, and
+                  responding to requests or grievances.
                 </p>
               </div>
               <div className="rounded-container bg-success-bg p-4">
                 <h3 className="text-sm font-semibold text-success">
-                  You control the optional features
+                  Community updates are optional
                 </h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                  Directory visibility and community updates are separate
-                  choices. You can change either later under Me → Edit profile.
+                  Approved members appear in the private member directory.
+                  Their professional profile can be found in People and tagged
+                  in posts. Phone, email, and LinkedIn visibility stay separate.
+                  Community updates remain optional.
                 </p>
               </div>
             </div>
 
             <p className="rounded-control border border-border bg-surface px-3.5 py-3 text-sm leading-relaxed text-ink-secondary">
-              Withdrawing an optional choice is as easy as turning it off in
-              your profile. For privacy requests, contact Sachin Kelkar at{" "}
+              You can turn optional community updates off in your profile. For
+              privacy requests, contact Sachin Kelkar at{" "}
               <a
                 className="font-medium text-navy-text underline decoration-navy/30 underline-offset-2"
                 href="mailto:sachinke@gmail.com"
@@ -180,8 +183,9 @@ export default async function PrivacyPage() {
                 Choose what MCAC can do
               </h2>
               <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                The first choice is required for membership. The other two are
-                optional and clearly show what changes when they are on or off.
+                The first choice is required for membership. Community updates
+                are optional and clearly show what changes when they are on or
+                off.
               </p>
             </div>
             <AcceptForm version={notice.version} choices={choices} />

@@ -110,16 +110,15 @@ export default async function MeEditPage() {
 
       <Card>
         <h3 className="mb-1 text-base font-semibold text-ink">
-          Privacy notice choices
+          Community updates
         </h3>
         <p className="mb-3 text-[13px] text-ink-secondary">
-          The two optional consents from the privacy notice. Change either at
+          Optional community updates from the privacy notice. Change this at
           any time; withdrawing takes effect from the moment you save.
         </p>
         <OptionalConsentsForm
           choices={{
             communications: profile.communicationsOptIn,
-            directory: profile.directoryListed,
           }}
         />
       </Card>

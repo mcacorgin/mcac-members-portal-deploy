@@ -97,7 +97,7 @@ export async function hasCurrentConsent(userId: string): Promise<boolean> {
 export async function acceptCurrentNotice(
   viewer: Viewer | null,
   acceptedVersion: number,
-  optionalChoices?: { communications: boolean; directory: boolean },
+  optionalChoices?: { communications: boolean },
 ): Promise<ActionResult> {
   if (!viewer) return err("unauthorized", "Sign in to continue.");
   const notice = await getCurrentNotice();
@@ -138,12 +138,6 @@ export async function acceptCurrentNotice(
       await writeCommunicationsDecision(
         viewer.id,
         optionalChoices.communications,
-        notice.version,
-        tx,
-      );
-      await writeDirectoryDecision(
-        viewer.id,
-        optionalChoices.directory,
         notice.version,
         tx,
       );
@@ -233,72 +227,22 @@ export async function setCommunicationsOptIn(
 }
 
 /**
- * Write one member-directory decision. Same shape as the communications
- * decision: current answer on the profile, history in audit_log.
- */
-async function writeDirectoryDecision(
-  userId: string,
-  listed: boolean,
-  noticeVersion: number | null,
-  dbOrTx: DbOrTx = db,
-): Promise<void> {
-  await dbOrTx
-    .update(tables.profiles)
-    .set({ directoryListed: listed, directoryDecidedAt: new Date() })
-    .where(eq(tables.profiles.userId, userId));
-  await recordAudit(
-    {
-      actorId: userId,
-      action: "account.directory_consent",
-      subjectType: "user",
-      subjectId: userId,
-      detail: { listed, noticeVersion },
-    },
-    dbOrTx,
-  );
-}
-
-/**
- * Member-directory consent (AUTH-02). Withholding it removes the member from
- * the directory, its search, and the share picker; it never hides authorship
- * of a post they published.
- */
-export async function setDirectoryListed(
-  viewer: Viewer | null,
-  listed: boolean,
-): Promise<ActionResult> {
-  if (!viewer) return err("unauthorized", "Sign in to continue.");
-  const notice = await getCurrentNotice();
-  await writeDirectoryDecision(viewer.id, listed, notice?.version ?? null);
-  return ok(undefined);
-}
-
-/**
- * Current optional consent choices for the owner (AUTH-02, HOME-04).
- *
- * `directory` is the effective state - whether the member is listed today.
- * `directoryDecided` says whether that state came from the member. Accounts
- * created before the 2026-08-15 notice were backfilled as listed without ever
- * being asked, and re-presenting that as a ticked consent box would record an
- * affirmative answer they never gave.
+ * Current optional communications choice for the owner (AUTH-02, HOME-04).
+ * Directory visibility is no longer optional: every approved member appears
+ * in People. Historical directory fields remain stored for audit/rollback but
+ * are deliberately absent from this runtime contract.
  */
 export async function getOptionalConsents(viewer: Viewer): Promise<{
   communications: boolean;
-  directory: boolean;
-  directoryDecided: boolean;
 }> {
   const profile = await db.query.profiles.findFirst({
     where: eq(tables.profiles.userId, viewer.id),
     columns: {
       communicationsOptIn: true,
-      directoryListed: true,
-      directoryDecidedAt: true,
     },
   });
   return {
     communications: profile?.communicationsOptIn ?? false,
-    directory: profile?.directoryListed ?? false,
-    directoryDecided: Boolean(profile?.directoryDecidedAt),
   };
 }
 

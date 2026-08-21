@@ -31,7 +31,6 @@ export async function acceptNoticeAction(
 
   const result = await acceptCurrentNotice(viewer, version, {
     communications: formData.get("communications") === "on",
-    directory: formData.get("directory") === "on",
   });
   if (!result.ok) {
     if (result.code === "conflict") {

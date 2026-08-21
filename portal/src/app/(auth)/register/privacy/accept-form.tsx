@@ -18,8 +18,6 @@ export function AcceptForm({
   version: number;
   choices: {
     communications: boolean;
-    directory: boolean;
-    directoryDecided: boolean;
   };
 }) {
   const [state, formAction, pending] = useActionState(
@@ -32,10 +30,6 @@ export function AcceptForm({
   // earlier. Starting unchecked is how consent is granted affirmatively; it is
   // not how consent gets withdrawn.
   const [communications, setCommunications] = useState(choices.communications);
-  // An inherited listing is not an answer: a member who was never asked sees
-  // this unticked, so accepting cannot manufacture a consent they never gave.
-  const directorySeed = choices.directoryDecided ? choices.directory : false;
-  const [directory, setDirectory] = useState(directorySeed);
 
   // If the notice version changed mid-read, the fresh notice re-renders and
   // the decision starts over: uncheck so acceptance is affirmative again
@@ -48,8 +42,6 @@ export function AcceptForm({
     if (state.conflict && checked) setChecked(false);
     if (state.conflict && communications !== choices.communications)
       setCommunications(choices.communications);
-    if (state.conflict && directory !== directorySeed)
-      setDirectory(directorySeed);
   }
 
   return (
@@ -73,16 +65,7 @@ export function AcceptForm({
         label="I agree to MCAC processing my information to evaluate and manage my membership."
         onDescription="your membership application can continue."
         offDescription="your application cannot continue."
-        footer="Required. This always starts off when a new notice version needs your agreement."
-      />
-      <ConsentCheckbox
-        name="directory"
-        checked={directory}
-        onChange={(event) => setDirectory(event.target.checked)}
-        label="List me in the MCAC member directory"
-        onDescription="approved members can find you in People and search, and tag you in posts."
-        offDescription="you stay out of People, member search, and post tagging."
-        footer="Optional. Posts you publish still show your name and photo. Change this later in Me → Edit profile."
+        footer="Required. If approved, your professional profile is visible to approved members in People and can be tagged in posts. Contact fields still follow your separate visibility choices."
       />
       <ConsentCheckbox
         name="communications"

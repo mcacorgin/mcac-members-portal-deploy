@@ -6,7 +6,7 @@ import { Button } from "@/components/ui";
 import type { ActionResult } from "@/lib/contracts/result";
 import { saveOptionalConsentsAction } from "@/app/consent-actions";
 
-// Editor for the privacy notice's two optional consents, shared by /me/edit
+// Editor for the privacy notice's optional communications consent, shared by /me/edit
 // and the pending/status screens. Section 10 of the notice promises a
 // withdrawal mechanism comparable to the one that took the consent, so the
 // wording matches the registration checkboxes and unchecking either is a
@@ -16,13 +16,12 @@ import { saveOptionalConsentsAction } from "@/app/consent-actions";
 export function OptionalConsentsForm({
   choices,
 }: {
-  choices: { communications: boolean; directory: boolean };
+  choices: { communications: boolean };
 }) {
   const [state, formAction, pending] = useActionState<
     ActionResult | null,
     FormData
   >(saveOptionalConsentsAction, null);
-  const [directory, setDirectory] = useState(choices.directory);
   const [communications, setCommunications] = useState(choices.communications);
 
   return (
@@ -44,15 +43,6 @@ export function OptionalConsentsForm({
         </p>
       ) : null}
 
-      <ConsentCheckbox
-        name="directory"
-        checked={directory}
-        onChange={(event) => setDirectory(event.target.checked)}
-        label="List me in the MCAC member directory"
-        onDescription="approved members can find you in People and search, and tag you in posts."
-        offDescription="you stay out of People, member search, and post tagging."
-        footer="Posts you publish still show your name and photo."
-      />
       <ConsentCheckbox
         name="communications"
         checked={communications}
