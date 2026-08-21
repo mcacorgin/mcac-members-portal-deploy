@@ -85,11 +85,9 @@ export default async function PendingPage() {
         </p>
       </Card>
       <Card className="grid gap-3 p-5">
-        <h3 className="text-base font-semibold text-ink">
-          Privacy notice choices
-        </h3>
+        <h3 className="text-base font-semibold text-ink">Community updates</h3>
         <p className="text-[13px] text-ink-secondary">
-          The two optional consents from the privacy notice. Change either at
+          Optional community updates from the privacy notice. Change this at
           any time, whatever happens to your application.
         </p>
         <OptionalConsentsForm choices={consentChoices} />

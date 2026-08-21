@@ -194,12 +194,9 @@ export const profiles = pgTable("profiles", {
   communicationsDecidedAt: timestamp("communications_decided_at", {
     mode: "date",
   }),
-  // AUTH-02: the member-directory consent from the same notice. False hides
-  // the member from /people, member search, and the share picker; it never
-  // hides authorship of anything they chose to publish. New rows default to
-  // false because listing is consented to, not assumed; accounts that predate
-  // the notice were backfilled to true in migration 0008 and keep their
-  // existing listing until they answer (directory_decided_at is then null).
+  // Historical directory-choice fields retained for audit and rollback after
+  // Sandeep retired the member-facing opt-out on 2026-08-20. Runtime directory,
+  // profile, and tagging queries must not use these fields as eligibility gates.
   directoryListed: boolean("directory_listed").notNull().default(false),
   directoryDecidedAt: timestamp("directory_decided_at", { mode: "date" }),
   // Set when the applicant submits their application evidence (pre-approval since 2026-07-30). Column keeps its historical name; rename deferred until a coherent migration window.
