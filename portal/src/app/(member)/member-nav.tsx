@@ -87,6 +87,7 @@ export function MemberTabs() {
           <Link
             key={item.href}
             href={item.href}
+            prefetch={false}
             aria-current={active ? "page" : undefined}
             className={cx(
               "ui-nav-item flex min-h-tap min-w-0 flex-col items-center justify-center gap-0.5 rounded-control p-1 text-[11px] font-medium",
@@ -131,6 +132,7 @@ export function MemberRailNav({ isAdmin }: { isAdmin: boolean }) {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               aria-current={active ? "page" : undefined}
               className="ui-nav-item ui-nav-primary mt-2 flex min-h-tap items-center justify-start gap-2 rounded-control bg-navy px-2.5 text-[13.5px] font-semibold text-white hover:bg-navy-hover"
             >
@@ -143,6 +145,7 @@ export function MemberRailNav({ isAdmin }: { isAdmin: boolean }) {
           <Link
             key={item.href}
             href={item.href}
+            prefetch={false}
             aria-current={active ? "page" : undefined}
             className={cx(
               "ui-nav-item flex min-h-tap items-center justify-start gap-2 rounded-control px-2.5 text-[13.5px] font-medium",
@@ -163,6 +166,7 @@ export function MemberRailNav({ isAdmin }: { isAdmin: boolean }) {
       {isAdmin ? (
         <Link
           href="/admin"
+          prefetch={false}
           aria-current={
             pathname === "/admin" || pathname.startsWith("/admin/")
               ? "page"

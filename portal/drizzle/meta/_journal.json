@@ -64,6 +64,20 @@
       "when": 1786690623665,
       "tag": "0008_directory_consent",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787019051851,
+      "tag": "0009_add_comment_edited_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787323088814,
+      "tag": "0010_add_comment_mentions",
+      "breakpoints": true
     }
   ]
 }

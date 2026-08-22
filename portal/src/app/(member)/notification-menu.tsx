@@ -192,7 +192,7 @@ export function NotificationMenu({
                   No notifications yet
                 </strong>
                 <p className="mt-1 text-sm text-ink-secondary">
-                  Tags, comments, replies, and account updates appear here.
+                  Tags, mentions, comments, replies, and account updates appear here.
                 </p>
               </div>
             )}

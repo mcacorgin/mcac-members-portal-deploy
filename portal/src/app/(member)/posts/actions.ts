@@ -3,8 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { requireViewer } from "@/lib/auth";
 import {
+  searchMentionableMembers,
+  type CommentMentionOption,
+} from "@/lib/posts/queries";
+import {
   addComment,
   deleteOwnComment,
+  editOwnComment,
   removePost,
   setPostRetentionExempt,
   toggleBookmark,
@@ -36,6 +41,7 @@ export async function addCommentAction(input: {
   postId: string;
   body: string;
   parentId?: string;
+  mentionedUserIds?: string[];
 }): Promise<ActionResult<{ id: string }>> {
   const viewer = await requireViewer();
   const result = await addComment(viewer, input);
@@ -46,6 +52,16 @@ export async function addCommentAction(input: {
   return ok({ id: result.data.id });
 }
 
+export async function searchCommentMentionMembersAction(
+  q: string,
+): Promise<ActionResult<CommentMentionOption[]>> {
+  const viewer = await requireViewer();
+  const term = q.trim();
+  if (!term) return ok([]);
+
+  return searchMentionableMembers(viewer, term);
+}
+
 export async function deleteOwnCommentAction(
   commentId: string,
   postId: string,
@@ -54,6 +70,23 @@ export async function deleteOwnCommentAction(
   const result = await deleteOwnComment(viewer, commentId);
   if (result.ok) revalidatePost(postId);
   return result;
+}
+
+export async function editOwnCommentAction(input: {
+  commentId: string;
+  postId: string;
+  body: string;
+}): Promise<ActionResult<{ id: string }>> {
+  const viewer = await requireViewer();
+  const result = await editOwnComment(viewer, {
+    commentId: input.commentId,
+    body: input.body,
+  });
+  if (!result.ok) {
+    return err(result.code, result.message, result.fieldErrors);
+  }
+  revalidatePost(input.postId);
+  return ok({ id: result.data.id });
 }
 
 export async function editPostAction(input: {

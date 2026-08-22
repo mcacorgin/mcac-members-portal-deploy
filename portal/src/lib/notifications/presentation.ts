@@ -22,6 +22,8 @@ export function presentNotification(
       ? payload.postTitle
       : "a post";
   const postId = typeof payload.postId === "string" ? payload.postId : "";
+  const commentId =
+    typeof payload.commentId === "string" ? payload.commentId : "";
   const actor =
     typeof payload.actorName === "string" && payload.actorName
       ? payload.actorName
@@ -45,6 +47,14 @@ export function presentNotification(
         kind: "Reply",
         title: `${actor} replied on "${postTitle}"`,
         target: postId ? `/posts/${postId}` : undefined,
+      };
+    case "mention":
+      return {
+        kind: "Mention",
+        title: `${actor} mentioned you in a comment on "${postTitle}"`,
+        target: postId
+          ? `/posts/${postId}${commentId ? `#comment-${commentId}` : ""}`
+          : undefined,
       };
     case "account_status": {
       const status =

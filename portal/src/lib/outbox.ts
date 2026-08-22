@@ -11,6 +11,7 @@ export type OutboxEventName =
   | "post.tagged"
   | "post.comment"
   | "comment.reply"
+  | "comment.mentioned"
   | "account.sections_changed"
   | "account.application_submitted";
 

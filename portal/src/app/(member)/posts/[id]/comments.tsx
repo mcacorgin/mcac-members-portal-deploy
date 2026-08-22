@@ -1,9 +1,21 @@
 "use client";
 
-import { useId, useState, useTransition, type FormEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { CommentNode } from "@/lib/posts/queries";
+import type {
+  CommentMentionOption,
+  CommentNode,
+} from "@/lib/posts/queries";
 import {
   Avatar,
   Button,
@@ -13,17 +25,362 @@ import {
   cx,
 } from "@/components/ui";
 import { relativeTime } from "../display";
-import { addCommentAction, deleteOwnCommentAction } from "../actions";
+import {
+  addCommentAction,
+  deleteOwnCommentAction,
+  editOwnCommentAction,
+  searchCommentMentionMembersAction,
+} from "../actions";
 
 // HOME-02 discussion thread: top-level comments with one nesting level,
-// deleted placeholders, inline reply/comment forms, and a two-step
-// delete-own-comment control (no browser confirm dialogs).
+// deleted placeholders, inline reply/comment forms, a two-step
+// delete-own-comment control, and an edit-own-comment control (no browser
+// confirm dialogs). Editing is only offered while a comment has no replies -
+// the server enforces the same rule regardless of what the UI shows.
 
 const ERROR_COPY: Record<string, string> = {
   section_disabled: "This section is not available.",
   not_found: "This post is no longer available.",
   unauthorized: "Your session expired. Sign in again.",
 };
+
+const MAX_MENTIONS = 10;
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  const first = parts[0][0] ?? "";
+  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? "") : "";
+  return (first + last).toUpperCase();
+}
+
+function MentionOptionName({ name, query }: { name: string; query: string }) {
+  const term = query.trim();
+  const matchStart = name.toLocaleLowerCase().indexOf(term.toLocaleLowerCase());
+  if (!term || matchStart < 0) return <>{name}</>;
+  const matchEnd = matchStart + term.length;
+  return (
+    <>
+      {name.slice(0, matchStart)}
+      <mark className="bg-transparent font-bold text-navy-text">
+        {name.slice(matchStart, matchEnd)}
+      </mark>
+      {name.slice(matchEnd)}
+    </>
+  );
+}
+
+function CommentBody({ comment }: { comment: CommentNode }) {
+  if (!comment.body || comment.mentionedMembers.length === 0) {
+    return <>{comment.body}</>;
+  }
+
+  const members = [...comment.mentionedMembers].sort(
+    (a, b) => b.name.length - a.name.length,
+  );
+  const memberByToken = new Map(
+    members.map((member) => [`@${member.name}`, member]),
+  );
+  const pattern = new RegExp(
+    `(${members.map((member) => escapeRegex(`@${member.name}`)).join("|")})`,
+    "g",
+  );
+  const parts: ReactNode[] = comment.body.split(pattern).map((part, index) => {
+    const member = memberByToken.get(part);
+    return member ? (
+      <Link
+        key={`${member.id}-${index}`}
+        href={`/people/${member.id}`}
+        className="rounded-control font-medium text-navy-text hover:underline"
+      >
+        {part}
+      </Link>
+    ) : (
+      part
+    );
+  });
+  return <>{parts}</>;
+}
+
+function containsMention(body: string, name: string): boolean {
+  return new RegExp(
+    `(?:^|\\s)@${escapeRegex(name)}(?=\\s|[.,!?;:]|$)`,
+  ).test(body);
+}
+
+type MentionTrigger = {
+  start: number;
+  cursor: number;
+  query: string;
+};
+
+function InlineMentionTextarea({
+  id,
+  value,
+  selected,
+  onChange,
+  onMention,
+  disabled,
+  autoFocus,
+  invalid,
+  describedBy,
+}: {
+  id: string;
+  value: string;
+  selected: CommentMentionOption[];
+  onChange: (value: string) => void;
+  onMention: (member: CommentMentionOption) => void;
+  disabled: boolean;
+  autoFocus?: boolean;
+  invalid?: boolean;
+  describedBy?: string;
+}) {
+  const listboxId = `${id}-mention-listbox`;
+  const statusId = `${id}-mention-status`;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [trigger, setTrigger] = useState<MentionTrigger | null>(null);
+  const [options, setOptions] = useState<CommentMentionOption[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const requestSeq = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const selectedIds = new Set(selected.map((member) => member.id));
+  const open = trigger !== null;
+  const showMenu = open && Boolean(trigger?.query.trim());
+
+  useEffect(
+    () => () => {
+      requestSeq.current += 1;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
+
+  function closeMenu() {
+    requestSeq.current += 1;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setTrigger(null);
+    setOptions([]);
+    setSearching(false);
+    setSearchError(null);
+    setActiveIndex(0);
+  }
+
+  function search(query: string) {
+    setSearchError(null);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    const term = query.trim();
+    const seq = ++requestSeq.current;
+    if (!term) {
+      setOptions([]);
+      setSearching(false);
+      return;
+    }
+    if (selected.length >= MAX_MENTIONS) {
+      setOptions([]);
+      setSearching(false);
+      setSearchError(`You can mention up to ${MAX_MENTIONS} members.`);
+      return;
+    }
+    setSearching(true);
+    timerRef.current = setTimeout(async () => {
+      const result = await searchCommentMentionMembersAction(term);
+      if (seq !== requestSeq.current) return;
+      setSearching(false);
+      if (!result.ok) {
+        setSearchError("Member search is unavailable right now.");
+        setOptions([]);
+        return;
+      }
+      setOptions(result.data.filter((member) => !selectedIds.has(member.id)));
+      setActiveIndex(0);
+    }, 200);
+  }
+
+  function updateTrigger(nextValue: string, cursor: number) {
+    const at = cursor - 1;
+    if (
+      at >= 0 &&
+      nextValue[at] === "@" &&
+      (at === 0 || /\s/.test(nextValue[at - 1] ?? ""))
+    ) {
+      setTrigger({ start: at, cursor, query: "" });
+      search("");
+      return;
+    }
+    if (!trigger) return;
+
+    const query = nextValue.slice(trigger.start + 1, cursor);
+    if (
+      cursor <= trigger.start ||
+      query.includes("@") ||
+      query.includes("\n") ||
+      /[()[\]{}]/.test(query) ||
+      /\s{2,}/.test(query) ||
+      query.length > 80
+    ) {
+      closeMenu();
+      return;
+    }
+    setTrigger({ ...trigger, cursor, query });
+    search(query);
+  }
+
+  function selectMention(member: CommentMentionOption) {
+    if (!trigger) return;
+    const trailing = value.slice(trigger.cursor);
+    const spacer = trailing.startsWith(" ") ? "" : " ";
+    const insertion = `@${member.name}${spacer}`;
+    const nextValue =
+      value.slice(0, trigger.start) + insertion + trailing;
+    const nextCursor = trigger.start + insertion.length;
+    onChange(nextValue);
+    onMention(member);
+    closeMenu();
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(nextCursor, nextCursor);
+    });
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (!open) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMenu();
+      return;
+    }
+    if (options.length === 0) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) => (index + 1) % options.length);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex(
+        (index) => (index - 1 + options.length) % options.length,
+      );
+      return;
+    }
+    if (event.key === "Enter" || event.key === "Tab") {
+      event.preventDefault();
+      selectMention(options[activeIndex]);
+    }
+  }
+
+  return (
+    <div className="relative">
+      <Textarea
+        ref={textareaRef}
+        id={id}
+        aria-haspopup="listbox"
+        aria-controls={showMenu ? listboxId : undefined}
+        aria-activedescendant={
+          showMenu && options[activeIndex]
+            ? `${listboxId}-${options[activeIndex].id}`
+            : undefined
+        }
+        aria-invalid={invalid ? "true" : undefined}
+        aria-describedby={
+          [describedBy, open ? statusId : undefined].filter(Boolean).join(" ") ||
+          undefined
+        }
+        value={value}
+        onChange={(event) => {
+          const nextValue = event.currentTarget.value;
+          const cursor = event.currentTarget.selectionStart;
+          onChange(nextValue);
+          updateTrigger(nextValue, cursor);
+        }}
+        onKeyDown={onKeyDown}
+        onBlur={closeMenu}
+        placeholder="Write a response. Type @ to mention someone"
+        autoComplete="off"
+        disabled={disabled}
+        autoFocus={autoFocus}
+      />
+      <span id={statusId} className="sr-only" aria-live="polite">
+        {searching
+          ? "Searching members"
+          : searchError ??
+            (open && trigger?.query.trim()
+              ? `${options.length} members found`
+              : open
+                ? "Type a member name"
+                : "")}
+      </span>
+      {showMenu ? (
+        <ul
+          id={listboxId}
+          role="listbox"
+          className="absolute inset-x-0 bottom-full z-30 mb-2 grid max-h-[min(14rem,40vh)] gap-0.5 overflow-y-auto rounded-container border border-border bg-surface p-1 shadow-card sm:right-auto sm:w-[min(28rem,100%)] lg:bottom-auto lg:top-full lg:mb-0 lg:mt-2"
+          aria-label="Member mention results"
+        >
+          {searching && options.length === 0 ? (
+            <li role="presentation" className="px-3 py-2 text-sm text-ink-muted">
+              Searching...
+            </li>
+          ) : searchError ? (
+            <li role="presentation" className="px-3 py-2 text-sm text-danger">
+              {searchError}
+            </li>
+          ) : options.length === 0 ? (
+            <li role="presentation" className="px-3 py-2 text-sm text-ink-muted">
+              No approved members match this search.
+            </li>
+          ) : (
+            options.map((option, index) => {
+              return (
+                <li
+                  key={option.id}
+                  id={`${listboxId}-${option.id}`}
+                  role="option"
+                  tabIndex={-1}
+                  aria-selected={index === activeIndex}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onClick={() => selectMention(option)}
+                  className={cx(
+                    "flex min-h-tap w-full cursor-pointer items-center gap-2.5 rounded-control px-2.5 py-1.5 text-left",
+                    index === activeIndex
+                      ? "bg-surface-subtle"
+                      : "hover:bg-surface-subtle",
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="grid size-8 flex-none place-items-center rounded-avatar bg-navy text-[10px] font-semibold tracking-[0.02em] text-white"
+                  >
+                    {initialsOf(option.name)}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-ink">
+                      <MentionOptionName
+                        name={option.name}
+                        query={trigger?.query ?? ""}
+                      />
+                    </span>
+                    {option.detail ? (
+                      <span className="block truncate text-xs text-ink-muted">
+                        {option.detail}
+                      </span>
+                    ) : null}
+                  </span>
+                </li>
+              );
+            })
+          )}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
 
 function actionMessage(code: string, fallback: string): string {
   return ERROR_COPY[code] ?? fallback;
@@ -51,6 +408,9 @@ function CommentForm({
   const id = useId();
   const router = useRouter();
   const [body, setBody] = useState("");
+  const [mentionedMembers, setMentionedMembers] = useState<
+    CommentMentionOption[]
+  >([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -71,12 +431,14 @@ function CommentForm({
         postId,
         body: trimmed,
         parentId,
+        mentionedUserIds: mentionedMembers.map((member) => member.id),
       });
       if (!result.ok) {
         setError(actionMessage(result.code, result.message));
         return;
       }
       setBody("");
+      setMentionedMembers([]);
       router.refresh();
       onDone?.();
     });
@@ -85,18 +447,28 @@ function CommentForm({
   return (
     <form onSubmit={onSubmit} className="grid gap-1.5" noValidate>
       <Label htmlFor={id}>{label}</Label>
-      <Textarea
+      <InlineMentionTextarea
         id={id}
         value={body}
-        onChange={(e) => {
-          setBody(e.target.value);
+        onChange={(nextBody) => {
+          setBody(nextBody);
+          setMentionedMembers((members) =>
+            members.filter((member) => containsMention(nextBody, member.name)),
+          );
           if (error) setError(null);
         }}
-        placeholder="Write a useful response"
+        selected={mentionedMembers}
+        onMention={(member) =>
+          setMentionedMembers((members) =>
+            members.some((item) => item.id === member.id)
+              ? members
+              : [...members, member],
+          )
+        }
         disabled={pending}
         autoFocus={autoFocus}
-        aria-invalid={error ? "true" : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
+        invalid={Boolean(error)}
+        describedBy={error ? `${id}-error` : undefined}
       />
       <FieldError id={`${id}-error`}>{error}</FieldError>
       <div className="flex items-center gap-2">
@@ -113,6 +485,88 @@ function CommentForm({
             Cancel
           </Button>
         ) : null}
+      </div>
+    </form>
+  );
+}
+
+type EditCommentFormProps = {
+  postId: string;
+  commentId: string;
+  initialBody: string;
+  onDone: () => void;
+  onCancel: () => void;
+};
+
+function EditCommentForm({
+  postId,
+  commentId,
+  initialBody,
+  onDone,
+  onCancel,
+}: EditCommentFormProps) {
+  const id = useId();
+  const router = useRouter();
+  const [body, setBody] = useState(initialBody);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    const trimmed = body.trim();
+    if (!trimmed) {
+      setError("Enter a comment before saving.");
+      return;
+    }
+    if (trimmed.length > 2000) {
+      setError("Comments are limited to 2000 characters.");
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const result = await editOwnCommentAction({
+        commentId,
+        postId,
+        body: trimmed,
+      });
+      if (!result.ok) {
+        setError(actionMessage(result.code, result.message));
+        return;
+      }
+      router.refresh();
+      onDone();
+    });
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="grid gap-1.5" noValidate>
+      <Label htmlFor={id}>Edit comment</Label>
+      <Textarea
+        id={id}
+        value={body}
+        onChange={(e) => {
+          setBody(e.target.value);
+          if (error) setError(null);
+        }}
+        disabled={pending}
+        autoFocus
+        aria-invalid={error ? "true" : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+      />
+      <FieldError id={`${id}-error`}>{error}</FieldError>
+      <div className="flex items-center gap-2">
+        <Button type="submit" size="sm" disabled={pending}>
+          {pending ? "Saving..." : "Save"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          disabled={pending}
+        >
+          Cancel
+        </Button>
       </div>
     </form>
   );
@@ -196,11 +650,19 @@ function CommentItem({
   isReply = false,
 }: CommentItemProps) {
   const [replying, setReplying] = useState(false);
+  const [editing, setEditing] = useState(false);
   const canDelete =
     !comment.deleted && (comment.author?.id === viewerId || isAdmin);
+  // Author-of-comment only, and only while it has no replies. No admin
+  // override: this is strictly the comment's own author.
+  const canEdit =
+    !comment.deleted &&
+    comment.author?.id === viewerId &&
+    comment.replies.length === 0;
 
   return (
     <article
+      id={`comment-${comment.id}`}
       className={cx(
         "grid gap-1.5",
         isReply && "ml-4 border-l-2 border-border pl-3.5 sm:ml-6",
@@ -239,30 +701,60 @@ function CommentItem({
               >
                 {relativeTime(comment.createdAt)}
               </span>
+              {comment.editedAt ? (
+                <span
+                  className="text-xs text-ink-muted"
+                  suppressHydrationWarning
+                >
+                  · Edited {relativeTime(comment.editedAt)}
+                </span>
+              ) : null}
             </div>
-            <p className="text-sm whitespace-pre-wrap text-ink-secondary">
-              {comment.body}
-            </p>
+            {editing ? (
+              <EditCommentForm
+                postId={postId}
+                commentId={comment.id}
+                initialBody={comment.body ?? ""}
+                onDone={() => setEditing(false)}
+                onCancel={() => setEditing(false)}
+              />
+            ) : (
+              <p className="text-sm whitespace-pre-wrap text-ink-secondary">
+                <CommentBody comment={comment} />
+              </p>
+            )}
           </div>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-2">
-        {!isReply && !comment.deleted ? (
-          replying ? null : (
+      {editing ? null : (
+        <div className="flex flex-wrap items-center gap-2">
+          {!isReply && !comment.deleted ? (
+            replying ? null : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setReplying(true)}
+              >
+                Reply
+              </Button>
+            )
+          ) : null}
+          {canEdit ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setReplying(true)}
+              onClick={() => setEditing(true)}
             >
-              Reply
+              Edit
             </Button>
-          )
-        ) : null}
-        {canDelete ? (
-          <DeleteOwnButton commentId={comment.id} postId={postId} />
-        ) : null}
-      </div>
+          ) : null}
+          {canDelete ? (
+            <DeleteOwnButton commentId={comment.id} postId={postId} />
+          ) : null}
+        </div>
+      )}
       {replying ? (
         <CommentForm
           postId={postId}
