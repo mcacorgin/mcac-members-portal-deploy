@@ -7,6 +7,7 @@ import {
   submitApplicationEvidence,
 } from "@/lib/account/registration";
 import { resolveLandingPath } from "@/lib/account/routing";
+import { scheduleOutboxDelivery } from "@/lib/notifications/delivery";
 
 export type EvidenceValues = {
   name: string;
@@ -47,7 +48,11 @@ export async function submitEvidenceAction(
     linkedinUrl: String(formData.get("linkedinUrl") ?? ""),
   };
 
-  const result = await submitApplicationEvidence(viewer, values);
+  const result = await submitApplicationEvidence(
+    viewer,
+    values,
+    scheduleOutboxDelivery,
+  );
   if (!result.ok)
     return {
       message: result.message,

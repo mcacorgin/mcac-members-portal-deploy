@@ -8,7 +8,10 @@ import {
   type Viewer,
 } from "@/lib/authz";
 import { recordAudit } from "@/lib/audit";
-import { emitEvent } from "@/lib/outbox";
+import {
+  emitEvent,
+  type OutboxDeliveryScheduler,
+} from "@/lib/outbox";
 import {
   getConfig,
   setConfig,
@@ -158,6 +161,7 @@ export async function setMemberSectionOverride(
   userId: string,
   section: Section,
   enabled: boolean | null, // null clears the override (inherit global)
+  scheduleDelivery?: OutboxDeliveryScheduler,
 ): Promise<ActionResult> {
   const denied = adminAccessError(admin);
   if (denied) return err(denied, "Administrator access is required.");
@@ -168,6 +172,7 @@ export async function setMemberSectionOverride(
   });
   if (!target) return err("not_found", "Account not found.");
 
+  const eventIds: number[] = [];
   await db.transaction(async (tx) => {
     const before = await sectionEnabledFor(section, userId, tx);
     if (enabled === null) {
@@ -199,11 +204,13 @@ export async function setMemberSectionOverride(
         type: "account_sections",
         payload: { section, enabled: after },
       });
-      await emitEvent(tx, "account.sections_changed", {
-        userId,
-        section,
-        enabled: after,
-      });
+      eventIds.push(
+        await emitEvent(tx, "account.sections_changed", {
+          userId,
+          section,
+          enabled: after,
+        }),
+      );
     }
 
     await recordAudit(
@@ -217,6 +224,7 @@ export async function setMemberSectionOverride(
       tx,
     );
   });
+  scheduleDelivery?.(eventIds);
   return ok(undefined);
 }
 
@@ -224,6 +232,7 @@ export async function adminSetConfig<K extends ConfigKey>(
   admin: Viewer | null,
   key: K,
   value: ConfigValue<K>,
+  scheduleDelivery?: OutboxDeliveryScheduler,
 ): Promise<ActionResult> {
   const denied = adminAccessError(admin);
   if (denied) return err(denied, "Administrator access is required.");
@@ -236,6 +245,7 @@ export async function adminSetConfig<K extends ConfigKey>(
   if (sectionKeyMatch) {
     const section = sectionKeyMatch[1] as Section;
     const next = Boolean(value);
+    const eventIds: number[] = [];
     try {
       await db.transaction(async (tx) => {
         const prev = await getConfig(key, tx);
@@ -272,11 +282,13 @@ export async function adminSetConfig<K extends ConfigKey>(
             })),
           );
           for (const m of affected) {
-            await emitEvent(tx, "account.sections_changed", {
-              userId: m.id,
-              section,
-              enabled: next,
-            });
+            eventIds.push(
+              await emitEvent(tx, "account.sections_changed", {
+                userId: m.id,
+                section,
+                enabled: next,
+              }),
+            );
           }
         }
         await recordAudit(
@@ -294,6 +306,7 @@ export async function adminSetConfig<K extends ConfigKey>(
       console.error(`[admin] section toggle fan-out failed for ${key}`, e);
       return err("internal", "That setting could not be saved.");
     }
+    scheduleDelivery?.(eventIds);
     return ok(undefined);
   }
 

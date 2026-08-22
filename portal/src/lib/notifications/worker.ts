@@ -179,9 +179,39 @@ export async function processOutbox(limit = 200): Promise<{ processed: number; f
     limit,
   });
 
-  let processed = 0;
-  let failed = 0;
+  const totals = { processed: 0, failed: 0 };
   for (const row of pending) {
+    const result = await processOutboxEvent(row.id);
+    totals.processed += result.processed;
+    totals.failed += result.failed;
+  }
+  return totals;
+}
+
+/**
+ * Deliver one event immediately while retaining the outbox as the source of
+ * truth. The row lock prevents an after-response attempt and the cron worker
+ * from sending the same event concurrently. A crash after provider delivery
+ * but before processedAt is written can still resend, matching the documented
+ * at-least-once contract.
+ */
+export async function processOutboxEvent(
+  eventId: number,
+): Promise<{ processed: number; failed: number }> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(tables.outboxEvents)
+      .where(
+        and(
+          eq(tables.outboxEvents.id, eventId),
+          isNull(tables.outboxEvents.processedAt),
+          lt(tables.outboxEvents.attempts, MAX_ATTEMPTS),
+        ),
+      )
+      .for("update", { skipLocked: true });
+    if (!row) return { processed: 0, failed: 0 };
+
     try {
       const mails = await buildOutboxEmails(row);
       for (const mail of mails) {
@@ -190,19 +220,18 @@ export async function processOutbox(limit = 200): Promise<{ processed: number; f
           throw new Error(`mail delivery failed for event ${row.id} (${row.name})`);
         }
       }
-      await db
+      await tx
         .update(tables.outboxEvents)
         .set({ processedAt: new Date() })
         .where(eq(tables.outboxEvents.id, row.id));
-      processed += 1;
+      return { processed: 1, failed: 0 };
     } catch (e) {
       console.error(`[outbox] event ${row.id} (${row.name}) failed`, e);
-      await db
+      await tx
         .update(tables.outboxEvents)
         .set({ attempts: row.attempts + 1 })
         .where(eq(tables.outboxEvents.id, row.id));
-      failed += 1;
+      return { processed: 0, failed: 1 };
     }
-  }
-  return { processed, failed };
+  });
 }

@@ -11,6 +11,7 @@ import {
   submitApplicationEvidence,
   updateContactVisibility,
 } from "@/lib/account/registration";
+import { scheduleOutboxDelivery } from "@/lib/notifications/delivery";
 import {
   createLinkIntent,
   isLinkedInLinked,
@@ -44,7 +45,7 @@ export async function saveProfile(
     bio: String(formData.get("bio") ?? ""),
     linkedinUrl: String(formData.get("linkedinUrl") ?? ""),
     tagIds: formData.getAll("tagIds").map(String),
-  });
+  }, scheduleOutboxDelivery);
   if (!res.ok) return res;
   revalidatePath("/me");
   revalidatePath("/me/edit");
