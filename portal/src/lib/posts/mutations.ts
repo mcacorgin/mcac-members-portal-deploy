@@ -1,5 +1,5 @@
 import { db, tables } from "@/db";
-import { and, eq, inArray, lt } from "drizzle-orm";
+import { and, asc, eq, inArray, lt } from "drizzle-orm";
 import { z } from "zod";
 import {
   adminAccessError,
@@ -131,6 +131,7 @@ const addCommentInputSchema = z.object({
   postId: z.uuid(),
   body: z.string().min(1).max(2000),
   parentId: z.uuid().optional(),
+  mentionedUserIds: z.array(z.uuid()).max(10).default([]),
 });
 
 export type AddCommentInput = z.input<typeof addCommentInputSchema>;
@@ -150,44 +151,123 @@ export async function addComment(
     return err("validation", "Check the highlighted fields.", fieldErrorsOf(parsed.error));
   }
   const { postId, body, parentId } = parsed.data;
+  const mentionedUserIds = [
+    ...new Set(parsed.data.mentionedUserIds.filter((id) => id !== v.id)),
+  ].sort();
 
-  const post = await db.query.posts.findFirst({
-    where: eq(tables.posts.id, postId),
-  });
-  if (!post || post.status === "removed") {
-    return err("not_found", "Post not found.");
-  }
-  if (!(await sectionEnabledFor(post.type, v.id))) {
-    return err("section_disabled", "This section is not available.");
-  }
-  if (!TYPE_CONFIG[post.type].capabilities.comments) {
-    return err("forbidden", "Comments are not available for this post type.");
-  }
-
-  let parent: CommentRow | undefined;
-  if (parentId) {
-    parent = await db.query.comments.findFirst({
-      where: eq(tables.comments.id, parentId),
-    });
-    if (!parent || parent.postId !== postId || parent.deletedAt) {
-      return err("not_found", "Comment not found.");
+  return db.transaction(async (tx) => {
+    const [post] = await tx
+      .select()
+      .from(tables.posts)
+      .where(eq(tables.posts.id, postId))
+      .for("update");
+    if (!post || post.status === "removed") {
+      return err("not_found", "Post not found.");
     }
-    if (parent.parentId) {
-      return err("validation", "Replies can only go one level deep.", {
-        parentId: ["Reply to the top-level comment instead."],
+    if (!(await sectionEnabledFor(post.type, v.id, tx))) {
+      return err("section_disabled", "This section is not available.");
+    }
+    if (!TYPE_CONFIG[post.type].capabilities.comments) {
+      return err("forbidden", "Comments are not available for this post type.");
+    }
+
+    let parent: CommentRow | undefined;
+    if (parentId) {
+      [parent] = await tx
+        .select()
+        .from(tables.comments)
+        .where(eq(tables.comments.id, parentId))
+        .for("update");
+      if (!parent || parent.postId !== postId || parent.deletedAt) {
+        return err("not_found", "Comment not found.");
+      }
+      if (parent.parentId) {
+        return err("validation", "Replies can only go one level deep.", {
+          parentId: ["Reply to the top-level comment instead."],
+        });
+      }
+    }
+
+    const mentionedMembers = mentionedUserIds.length
+      ? await tx
+          .select({ id: tables.users.id, name: tables.users.name })
+          .from(tables.users)
+          .where(
+            and(
+              inArray(tables.users.id, mentionedUserIds),
+              eq(tables.users.status, "approved"),
+            ),
+          )
+          .orderBy(asc(tables.users.id))
+          .for("update")
+      : [];
+    if (mentionedMembers.length !== mentionedUserIds.length) {
+      return err("validation", "Mentioned members must be approved members.", {
+        mentionedUserIds: [
+          "One or more mentioned members are unavailable or no longer approved.",
+        ],
       });
     }
-  }
+    const mentionNames = new Set<string>();
+    for (const member of mentionedMembers) {
+      const key = member.name.trim().toLocaleLowerCase();
+      if (!key || mentionNames.has(key)) {
+        return err("validation", "Choose unambiguous member mentions.", {
+          mentionedUserIds: [
+            "Two selected members have the same display name. Mention only one of them in this comment.",
+          ],
+        });
+      }
+      mentionNames.add(key);
+      if (!body.includes(`@${member.name}`)) {
+        return err("validation", "Mention text does not match the selected member.", {
+          mentionedUserIds: [
+            `Keep @${member.name} in the comment or remove that mention.`,
+          ],
+        });
+      }
+    }
 
-  const comment = await db.transaction(async (tx) => {
     const [created] = await tx
       .insert(tables.comments)
       .values({ postId, authorId: v.id, body, parentId: parentId ?? null })
       .returning();
 
+    if (mentionedUserIds.length > 0) {
+      await tx.insert(tables.commentMentions).values(
+        mentionedMembers.map((member) => ({
+          commentId: created.id,
+          userId: member.id,
+          label: member.name,
+        })),
+      );
+      await tx.insert(tables.notifications).values(
+        mentionedUserIds.map((userId) => ({
+          userId,
+          type: "mention",
+          payload: {
+            postId,
+            postTitle: post.title,
+            postType: post.type,
+            commentId: created.id,
+            actorName: v.name,
+          },
+        })),
+      );
+      await emitEvent(tx, "comment.mentioned", {
+        postId,
+        postTitle: post.title,
+        commentId: created.id,
+        authorId: v.id,
+        mentionedUserIds,
+      });
+    }
+
+    const mentionRecipients = new Set(mentionedUserIds);
+
     // Never notify the actor about their own activity.
     if (parent) {
-      if (parent.authorId !== v.id) {
+      if (parent.authorId !== v.id && !mentionRecipients.has(parent.authorId)) {
         await tx.insert(tables.notifications).values({
           userId: parent.authorId,
           type: "reply",
@@ -206,7 +286,7 @@ export async function addComment(
           authorId: v.id,
         });
       }
-    } else if (post.authorId !== v.id) {
+    } else if (post.authorId !== v.id && !mentionRecipients.has(post.authorId)) {
       await tx.insert(tables.notifications).values({
         userId: post.authorId,
         type: "comment",
@@ -225,10 +305,8 @@ export async function addComment(
         postAuthorId: post.authorId,
       });
     }
-    return created;
+    return ok(created);
   });
-
-  return ok(comment);
 }
 
 export async function toggleBookmark(
@@ -302,6 +380,80 @@ export async function deleteOwnComment(
     });
   }
   return ok(undefined);
+}
+
+const editOwnCommentInputSchema = z.object({
+  commentId: z.uuid(),
+  body: z.string().min(1).max(2000),
+});
+
+export type EditOwnCommentInput = z.input<typeof editOwnCommentInputSchema>;
+
+export async function editOwnComment(
+  viewer: Viewer | null,
+  input: EditOwnCommentInput,
+): Promise<ActionResult<CommentRow>> {
+  const accessErr = memberAccessError(viewer);
+  if (accessErr) return err(accessErr, "You cannot edit comments.");
+  const v = viewer!;
+
+  const parsed = editOwnCommentInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return err("validation", "Check the highlighted fields.", fieldErrorsOf(parsed.error));
+  }
+  const { commentId, body } = parsed.data;
+
+  return db.transaction(async (tx) => {
+    const [comment] = await tx
+      .select()
+      .from(tables.comments)
+      .where(eq(tables.comments.id, commentId))
+      .for("update");
+    if (!comment || comment.deletedAt) {
+      return err("not_found", "Comment not found.");
+    }
+    // Author-of-comment only: post authors and admins get no extra edit power.
+    if (comment.authorId !== v.id) {
+      return err("forbidden", "Only the comment author can edit this.");
+    }
+
+    const [reply] = await tx
+      .select({ id: tables.comments.id })
+      .from(tables.comments)
+      .where(eq(tables.comments.parentId, commentId))
+      .limit(1);
+    if (reply) {
+      return err("forbidden", "A comment with replies can no longer be edited.");
+    }
+
+    const currentMentions = await tx
+      .select({
+        userId: tables.commentMentions.userId,
+        label: tables.commentMentions.label,
+      })
+      .from(tables.commentMentions)
+      .where(eq(tables.commentMentions.commentId, commentId));
+    const removedMentionIds = currentMentions
+      .filter((member) => !body.includes(`@${member.label}`))
+      .map((member) => member.userId);
+    if (removedMentionIds.length > 0) {
+      await tx
+        .delete(tables.commentMentions)
+        .where(
+          and(
+            eq(tables.commentMentions.commentId, commentId),
+            inArray(tables.commentMentions.userId, removedMentionIds),
+          ),
+        );
+    }
+
+    const [updated] = await tx
+      .update(tables.comments)
+      .set({ body, editedAt: new Date() })
+      .where(eq(tables.comments.id, commentId))
+      .returning();
+    return ok(updated);
+  });
 }
 
 export async function updatePost(

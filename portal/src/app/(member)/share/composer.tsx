@@ -3,8 +3,6 @@
 import {
   startTransition,
   useActionState,
-  useEffect,
-  useRef,
   useState,
   type FormEvent,
 } from "react";
@@ -21,10 +19,12 @@ import {
   FormField,
   Input,
   Select,
-  Tag,
-  Textarea,
   cx,
 } from "@/components/ui";
+import {
+  containsMemberMention,
+  InlineMemberMentionTextarea,
+} from "@/components/inline-member-mention-textarea";
 import { TYPE_LABELS, formatBytes } from "../posts/display";
 import { publishShareAction, searchMembersAction } from "./actions";
 import { SHARE_IDLE, type MemberOption, type ShareFormState } from "./form-state";
@@ -88,170 +88,13 @@ function mandateFieldErrors(formData: FormData): Record<string, string[]> {
   return errors;
 }
 
-function TagPicker({
-  selected,
-  onChange,
-  disabled,
-}: {
-  selected: MemberOption[];
-  onChange: (next: MemberOption[]) => void;
-  disabled: boolean;
-}) {
-  const [query, setQuery] = useState("");
-  const [options, setOptions] = useState<MemberOption[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const requestSeq = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Clear any in-flight debounce timer on unmount.
-  useEffect(
-    () => () => {
-      requestSeq.current += 1;
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
-
-  function onQueryChange(value: string) {
-    setQuery(value);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    const term = value.trim();
-    const seq = ++requestSeq.current;
-    if (!term) {
-      setOptions([]);
-      setSearching(false);
-      return;
-    }
-    setSearching(true);
-    timerRef.current = setTimeout(async () => {
-      const result = await searchMembersAction(term);
-      if (seq !== requestSeq.current) return;
-      setSearching(false);
-      if (!result.ok) {
-        setError("Member search is unavailable right now.");
-        setOptions([]);
-        return;
-      }
-      setError(null);
-      setOptions(result.data);
-    }, 250);
-  }
-
-  const selectedIds = new Set(selected.map((m) => m.id));
-  const atLimit = selected.length >= MAX_TAGGED;
-
-  return (
-    <div className="grid gap-1.5">
-      <FormField
-        label="Tag relevant members (optional)"
-        htmlFor="share-tag-search"
-        hint={
-          atLimit
-            ? `Limit of ${MAX_TAGGED} tagged members reached.`
-            : "Tagged members get an in-app notification and a queued email."
-        }
-        error={error}
-      >
-        <Input
-          id="share-tag-search"
-          type="search"
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="Search members by name, city, or company"
-          disabled={disabled || atLimit}
-          autoComplete="off"
-        />
-      </FormField>
-
-      {query.trim() && !atLimit ? (
-        <ul
-          className="grid max-h-60 gap-0.5 overflow-y-auto rounded-container border border-border bg-surface p-1"
-          aria-label="Member results"
-        >
-          {searching && options.length === 0 ? (
-            <li className="px-3 py-2.5 text-sm text-ink-muted">Searching...</li>
-          ) : options.length === 0 ? (
-            <li className="px-3 py-2.5 text-sm text-ink-muted">
-              No members match this search.
-            </li>
-          ) : (
-            options.map((option) => {
-              const added = selectedIds.has(option.id);
-              return (
-                <li key={option.id}>
-                  <button
-                    type="button"
-                    disabled={added || disabled}
-                    onClick={() => {
-                      onChange([...selected, option]);
-                      setQuery("");
-                      setOptions([]);
-                    }}
-                    className={cx(
-                      "flex min-h-tap w-full cursor-pointer items-center justify-between gap-2 rounded-control px-3 py-1.5 text-left hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-60",
-                    )}
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-ink">
-                        {option.name}
-                      </span>
-                      {option.detail ? (
-                        <span className="block truncate text-xs text-ink-muted">
-                          {option.detail}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="flex-none text-xs text-ink-muted">
-                      {added ? "Added" : "Add"}
-                    </span>
-                  </button>
-                </li>
-              );
-            })
-          )}
-        </ul>
-      ) : null}
-
-      {selected.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5" aria-label="Tagged members">
-          {selected.map((member) => (
-            <Tag key={member.id} selected className="gap-1.5 py-1">
-              {member.name}
-              <button
-                type="button"
-                onClick={() =>
-                  onChange(selected.filter((m) => m.id !== member.id))
-                }
-                disabled={disabled}
-                aria-label={`Remove ${member.name}`}
-                className="relative grid size-5 cursor-pointer place-items-center rounded-full after:absolute after:-inset-3 hover:bg-navy/10"
-              >
-                <span aria-hidden="true">×</span>
-              </button>
-            </Tag>
-          ))}
-        </div>
-      ) : null}
-
-      {selected.map((member) => (
-        <input
-          key={member.id}
-          type="hidden"
-          name="taggedUserIds"
-          value={member.id}
-        />
-      ))}
-    </div>
-  );
-}
-
 export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps) {
   const [state, dispatch, pending] = useActionState<ShareFormState, FormData>(
     publishShareAction,
     SHARE_IDLE,
   );
   const [type, setType] = useState<PostTypeName | "">("");
+  const [body, setBody] = useState("");
   const [tagged, setTagged] = useState<MemberOption[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
   const [clientFieldErrors, setClientFieldErrors] = useState<
@@ -501,20 +344,49 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
                     : "Description (required)"
             }
             htmlFor="share-body"
+            hint="Type @ and a member's name to tag them. Tagged members receive a notification."
             error={errFor("body")}
           >
-            <Textarea
+            <InlineMemberMentionTextarea
               id="share-body"
               name="body"
+              value={body}
+              selected={tagged}
+              onChange={(nextBody) => {
+                setBody(nextBody);
+                setTagged((members) =>
+                  members.filter((member) =>
+                    containsMemberMention(nextBody, member.name),
+                  ),
+                );
+              }}
+              onMention={(member, nextBody) => {
+                setBody(nextBody);
+                setTagged((members) =>
+                  members.some((item) => item.id === member.id)
+                    ? members
+                    : [...members, member]
+                );
+              }}
+              searchMembers={searchMembersAction}
+              maxMentions={MAX_TAGGED}
               rows={6}
               maxLength={5000}
               disabled={pending}
-              aria-invalid={errFor("body") ? "true" : undefined}
-              aria-describedby={errFor("body") ? "share-body-error" : undefined}
+              invalid={Boolean(errFor("body"))}
+              describedBy={errFor("body") ? "share-body-error" : undefined}
+              placeholder="Write your post. Type @ to tag a member"
             />
           </FormField>
 
-          <TagPicker selected={tagged} onChange={setTagged} disabled={pending} />
+          {tagged.map((member) => (
+            <input
+              key={member.id}
+              type="hidden"
+              name="taggedUserIds"
+              value={member.id}
+            />
+          ))}
           <FieldError>{errFor("taggedUserIds")}</FieldError>
 
           <FormField

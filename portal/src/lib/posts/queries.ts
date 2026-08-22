@@ -55,7 +55,16 @@ export type CommentNode = {
   author: PostAuthor | null;
   deleted: boolean;
   createdAt: Date;
+  // Set once the author edits the comment; null if never edited.
+  editedAt: Date | null;
+  mentionedMembers: { id: string; name: string }[];
   replies: CommentNode[];
+};
+
+export type CommentMentionOption = {
+  id: string;
+  name: string;
+  detail: string;
 };
 
 export type PostDetail = FeedItem & {
@@ -74,6 +83,49 @@ export type PostDetail = FeedItem & {
 };
 
 const DEFAULT_PAGE_SIZE = 20;
+
+/**
+ * Small, name-only lookup for comment mentions. This deliberately avoids the
+ * directory's broader fuzzy/company/expertise search and count query: comment
+ * composition needs a fast identity picker, not a second directory page.
+ */
+export async function searchMentionableMembers(
+  viewer: Viewer | null,
+  query: string,
+): Promise<ActionResult<CommentMentionOption[]>> {
+  const denied = memberAccessError(viewer);
+  if (denied) return err(denied, "Member access is required.");
+  const term = query.trim().slice(0, 100);
+  if (!term) return ok([]);
+
+  const rows = await db
+    .select({
+      id: tables.users.id,
+      name: tables.users.name,
+      title: tables.profiles.title,
+      company: tables.profiles.company,
+    })
+    .from(tables.users)
+    .leftJoin(tables.profiles, eq(tables.profiles.userId, tables.users.id))
+    .where(
+      and(
+        eq(tables.users.status, "approved"),
+        ilike(tables.users.name, `%${escapeLike(term)}%`),
+      ),
+    )
+    .orderBy(asc(tables.users.name), asc(tables.users.id))
+    .limit(5);
+
+  return ok(
+    rows
+      .filter((row) => row.id !== viewer!.id)
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        detail: [row.title, row.company].filter(Boolean).join(" · "),
+      })),
+  );
+}
 
 // Runtime-validated so an out-of-union view/type from a route handler fails
 // closed instead of falling through without a status predicate.
@@ -256,8 +308,8 @@ export async function getPostDetail(
   const v = viewer!;
   const isAdmin = hasAdminRole(v.role);
 
-  const [row] = await db
-    .select({
+  const [postRows, enabled] = await Promise.all([
+    db.select({
       id: tables.posts.id,
       type: tables.posts.type,
       title: tables.posts.title,
@@ -278,17 +330,20 @@ export async function getPostDetail(
     .from(tables.posts)
     .innerJoin(tables.users, eq(tables.posts.authorId, tables.users.id))
     .where(eq(tables.posts.id, postId))
-    .limit(1);
+      .limit(1),
+    enabledSections(v.id),
+  ]);
+  const row = postRows[0];
 
   if (!row) return err("not_found", "Post not found.");
   if (row.status === "removed" && !isAdmin) {
     return err("not_found", "Post not found.");
   }
-  if (!(await sectionEnabledFor(row.type, v.id))) {
+  if (!enabled.includes(row.type)) {
     return err("section_disabled", "This section is not available.");
   }
 
-  const [taggedMembers, attachmentRows, commentRows] = await Promise.all([
+  const [taggedMembers, attachmentRows, commentRows, commentMentionRows] = await Promise.all([
     db
       .select({ id: tables.users.id, name: tables.users.name })
       .from(tables.postTaggedMembers)
@@ -314,6 +369,7 @@ export async function getPostDetail(
         parentId: tables.comments.parentId,
         body: tables.comments.body,
         createdAt: tables.comments.createdAt,
+        editedAt: tables.comments.editedAt,
         deletedAt: tables.comments.deletedAt,
         authorId: tables.users.id,
         authorName: tables.users.name,
@@ -323,7 +379,30 @@ export async function getPostDetail(
       .innerJoin(tables.users, eq(tables.comments.authorId, tables.users.id))
       .where(eq(tables.comments.postId, postId))
       .orderBy(asc(tables.comments.createdAt), asc(tables.comments.id)),
+    db
+      .select({
+        commentId: tables.commentMentions.commentId,
+        userId: tables.users.id,
+        mentionLabel: tables.commentMentions.label,
+      })
+      .from(tables.commentMentions)
+      .innerJoin(
+        tables.comments,
+        eq(tables.commentMentions.commentId, tables.comments.id),
+      )
+      .innerJoin(tables.users, eq(tables.commentMentions.userId, tables.users.id))
+      .where(eq(tables.comments.postId, postId)),
   ]);
+
+  const mentionsByComment = new Map<
+    string,
+    { id: string; name: string }[]
+  >();
+  for (const mention of commentMentionRows) {
+    const members = mentionsByComment.get(mention.commentId) ?? [];
+    members.push({ id: mention.userId, name: mention.mentionLabel });
+    mentionsByComment.set(mention.commentId, members);
+  }
 
   const toNode = (c: (typeof commentRows)[number]): CommentNode => ({
     id: c.id,
@@ -333,6 +412,8 @@ export async function getPostDetail(
       : { id: c.authorId, name: c.authorName, image: c.authorImage },
     deleted: c.deletedAt !== null,
     createdAt: c.createdAt,
+    editedAt: c.deletedAt ? null : c.editedAt,
+    mentionedMembers: c.deletedAt ? [] : (mentionsByComment.get(c.id) ?? []),
     replies: [],
   });
   const topLevel = new Map<string, CommentNode>();

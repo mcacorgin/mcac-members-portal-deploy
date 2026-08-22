@@ -18,7 +18,7 @@ import {
 // /admin/applications/[id] target are bounced by the admin layout guard, so
 // allowing it here is safe for every viewer, not just admins.
 const SAFE_TARGET =
-  /^\/(me|posts\/[A-Za-z0-9_-]+|admin\/applications\/[A-Za-z0-9_-]+)$/;
+  /^\/(me|posts\/[A-Za-z0-9_-]+(?:#comment-[A-Za-z0-9_-]+)?|admin\/applications\/[A-Za-z0-9_-]+)$/;
 
 /** Mark one notification read, then follow it to its related screen. */
 export async function openNotification(

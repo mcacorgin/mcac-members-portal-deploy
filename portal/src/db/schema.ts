@@ -319,9 +319,32 @@ export const comments = pgTable(
     parentId: text("parent_id").references((): AnyPgColumn => comments.id),
     body: text("body").notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().default(utcNow),
+    editedAt: timestamp("edited_at", { mode: "date" }),
     deletedAt: timestamp("deleted_at", { mode: "date" }),
   },
   (t) => [index("comments_post_idx").on(t.postId, t.createdAt)],
+);
+
+// Structured comment mentions keep identity separate from display text. The
+// comment body remains plain text; this relation is the authorization and
+// notification source of truth.
+export const commentMentions = pgTable(
+  "comment_mentions",
+  {
+    commentId: text("comment_id")
+      .notNull()
+      .references(() => comments.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Snapshot the inserted token so later member-name changes do not break
+    // rendering or edit-time mention cleanup for historical comments.
+    label: text("label").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.commentId, t.userId] }),
+    index("comment_mentions_user_idx").on(t.userId),
+  ],
 );
 
 export const bookmarks = pgTable(

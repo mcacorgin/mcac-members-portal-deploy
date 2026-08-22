@@ -17,7 +17,9 @@ const MAX_ATTEMPTS = 5;
 
 type OutboxRow = typeof tables.outboxEvents.$inferSelect;
 
-async function emailFor(row: OutboxRow): Promise<{ to: string; subject: string; text: string }[]> {
+export async function buildOutboxEmails(
+  row: OutboxRow,
+): Promise<{ to: string; subject: string; text: string }[]> {
   const p = row.payload as Record<string, unknown>;
   const base = process.env.AUTH_URL ?? "http://localhost:3000";
 
@@ -146,6 +148,22 @@ async function emailFor(row: OutboxRow): Promise<{ to: string; subject: string; 
         },
       ];
     }
+    case "comment.mentioned": {
+      const ids = Array.isArray(p.mentionedUserIds)
+        ? (p.mentionedUserIds as string[])
+        : [];
+      const mails = [];
+      for (const id of ids) {
+        const u = await userEmail(id);
+        if (!u || u.status !== "approved") continue;
+        mails.push({
+          to: u.email,
+          subject: `You were mentioned: ${String(p.postTitle ?? "a post")}`,
+          text: `Hello ${u.name},\n\nA member mentioned you in a comment on "${String(p.postTitle ?? "")}".\n\nRead it here:\n${base}/posts/${String(p.postId)}#comment-${String(p.commentId)}\n`,
+        });
+      }
+      return mails;
+    }
     default:
       return [];
   }
@@ -165,7 +183,7 @@ export async function processOutbox(limit = 200): Promise<{ processed: number; f
   let failed = 0;
   for (const row of pending) {
     try {
-      const mails = await emailFor(row);
+      const mails = await buildOutboxEmails(row);
       for (const mail of mails) {
         const result = await sendMail(mail);
         if (!result.delivered) {

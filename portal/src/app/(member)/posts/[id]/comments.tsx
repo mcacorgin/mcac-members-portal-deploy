@@ -1,9 +1,18 @@
 "use client";
 
-import { useId, useState, useTransition, type FormEvent } from "react";
+import {
+  useId,
+  useState,
+  useTransition,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { CommentNode } from "@/lib/posts/queries";
+import type {
+  CommentMentionOption,
+  CommentNode,
+} from "@/lib/posts/queries";
 import {
   Avatar,
   Button,
@@ -12,18 +21,67 @@ import {
   Textarea,
   cx,
 } from "@/components/ui";
+import {
+  containsMemberMention,
+  InlineMemberMentionTextarea,
+} from "@/components/inline-member-mention-textarea";
 import { relativeTime } from "../display";
-import { addCommentAction, deleteOwnCommentAction } from "../actions";
+import {
+  addCommentAction,
+  deleteOwnCommentAction,
+  editOwnCommentAction,
+  searchCommentMentionMembersAction,
+} from "../actions";
 
 // HOME-02 discussion thread: top-level comments with one nesting level,
-// deleted placeholders, inline reply/comment forms, and a two-step
-// delete-own-comment control (no browser confirm dialogs).
+// deleted placeholders, inline reply/comment forms, a two-step
+// delete-own-comment control, and an edit-own-comment control (no browser
+// confirm dialogs). Editing is only offered while a comment has no replies -
+// the server enforces the same rule regardless of what the UI shows.
 
 const ERROR_COPY: Record<string, string> = {
   section_disabled: "This section is not available.",
   not_found: "This post is no longer available.",
   unauthorized: "Your session expired. Sign in again.",
 };
+
+const MAX_MENTIONS = 10;
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function CommentBody({ comment }: { comment: CommentNode }) {
+  if (!comment.body || comment.mentionedMembers.length === 0) {
+    return <>{comment.body}</>;
+  }
+
+  const members = [...comment.mentionedMembers].sort(
+    (a, b) => b.name.length - a.name.length,
+  );
+  const memberByToken = new Map(
+    members.map((member) => [`@${member.name}`, member]),
+  );
+  const pattern = new RegExp(
+    `(${members.map((member) => escapeRegex(`@${member.name}`)).join("|")})`,
+    "g",
+  );
+  const parts: ReactNode[] = comment.body.split(pattern).map((part, index) => {
+    const member = memberByToken.get(part);
+    return member ? (
+      <Link
+        key={`${member.id}-${index}`}
+        href={`/people/${member.id}`}
+        className="rounded-control font-medium text-navy-text hover:underline"
+      >
+        {part}
+      </Link>
+    ) : (
+      part
+    );
+  });
+  return <>{parts}</>;
+}
 
 function actionMessage(code: string, fallback: string): string {
   return ERROR_COPY[code] ?? fallback;
@@ -51,6 +109,9 @@ function CommentForm({
   const id = useId();
   const router = useRouter();
   const [body, setBody] = useState("");
+  const [mentionedMembers, setMentionedMembers] = useState<
+    CommentMentionOption[]
+  >([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -71,12 +132,14 @@ function CommentForm({
         postId,
         body: trimmed,
         parentId,
+        mentionedUserIds: mentionedMembers.map((member) => member.id),
       });
       if (!result.ok) {
         setError(actionMessage(result.code, result.message));
         return;
       }
       setBody("");
+      setMentionedMembers([]);
       router.refresh();
       onDone?.();
     });
@@ -85,18 +148,34 @@ function CommentForm({
   return (
     <form onSubmit={onSubmit} className="grid gap-1.5" noValidate>
       <Label htmlFor={id}>{label}</Label>
-      <Textarea
+      <InlineMemberMentionTextarea
         id={id}
         value={body}
-        onChange={(e) => {
-          setBody(e.target.value);
+        onChange={(nextBody) => {
+          setBody(nextBody);
+          setMentionedMembers((members) =>
+            members.filter((member) =>
+              containsMemberMention(nextBody, member.name),
+            ),
+          );
           if (error) setError(null);
         }}
-        placeholder="Write a useful response"
+        selected={mentionedMembers}
+        onMention={(member, nextBody) => {
+          setBody(nextBody);
+          setMentionedMembers((members) =>
+            members.some((item) => item.id === member.id)
+              ? members
+              : [...members, member],
+          );
+          if (error) setError(null);
+        }}
         disabled={pending}
+        maxMentions={MAX_MENTIONS}
+        searchMembers={searchCommentMentionMembersAction}
         autoFocus={autoFocus}
-        aria-invalid={error ? "true" : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
+        invalid={Boolean(error)}
+        describedBy={error ? `${id}-error` : undefined}
       />
       <FieldError id={`${id}-error`}>{error}</FieldError>
       <div className="flex items-center gap-2">
@@ -113,6 +192,88 @@ function CommentForm({
             Cancel
           </Button>
         ) : null}
+      </div>
+    </form>
+  );
+}
+
+type EditCommentFormProps = {
+  postId: string;
+  commentId: string;
+  initialBody: string;
+  onDone: () => void;
+  onCancel: () => void;
+};
+
+function EditCommentForm({
+  postId,
+  commentId,
+  initialBody,
+  onDone,
+  onCancel,
+}: EditCommentFormProps) {
+  const id = useId();
+  const router = useRouter();
+  const [body, setBody] = useState(initialBody);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    const trimmed = body.trim();
+    if (!trimmed) {
+      setError("Enter a comment before saving.");
+      return;
+    }
+    if (trimmed.length > 2000) {
+      setError("Comments are limited to 2000 characters.");
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const result = await editOwnCommentAction({
+        commentId,
+        postId,
+        body: trimmed,
+      });
+      if (!result.ok) {
+        setError(actionMessage(result.code, result.message));
+        return;
+      }
+      router.refresh();
+      onDone();
+    });
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="grid gap-1.5" noValidate>
+      <Label htmlFor={id}>Edit comment</Label>
+      <Textarea
+        id={id}
+        value={body}
+        onChange={(e) => {
+          setBody(e.target.value);
+          if (error) setError(null);
+        }}
+        disabled={pending}
+        autoFocus
+        aria-invalid={error ? "true" : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+      />
+      <FieldError id={`${id}-error`}>{error}</FieldError>
+      <div className="flex items-center gap-2">
+        <Button type="submit" size="sm" disabled={pending}>
+          {pending ? "Saving..." : "Save"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          disabled={pending}
+        >
+          Cancel
+        </Button>
       </div>
     </form>
   );
@@ -196,11 +357,19 @@ function CommentItem({
   isReply = false,
 }: CommentItemProps) {
   const [replying, setReplying] = useState(false);
+  const [editing, setEditing] = useState(false);
   const canDelete =
     !comment.deleted && (comment.author?.id === viewerId || isAdmin);
+  // Author-of-comment only, and only while it has no replies. No admin
+  // override: this is strictly the comment's own author.
+  const canEdit =
+    !comment.deleted &&
+    comment.author?.id === viewerId &&
+    comment.replies.length === 0;
 
   return (
     <article
+      id={`comment-${comment.id}`}
       className={cx(
         "grid gap-1.5",
         isReply && "ml-4 border-l-2 border-border pl-3.5 sm:ml-6",
@@ -239,30 +408,60 @@ function CommentItem({
               >
                 {relativeTime(comment.createdAt)}
               </span>
+              {comment.editedAt ? (
+                <span
+                  className="text-xs text-ink-muted"
+                  suppressHydrationWarning
+                >
+                  · Edited {relativeTime(comment.editedAt)}
+                </span>
+              ) : null}
             </div>
-            <p className="text-sm whitespace-pre-wrap text-ink-secondary">
-              {comment.body}
-            </p>
+            {editing ? (
+              <EditCommentForm
+                postId={postId}
+                commentId={comment.id}
+                initialBody={comment.body ?? ""}
+                onDone={() => setEditing(false)}
+                onCancel={() => setEditing(false)}
+              />
+            ) : (
+              <p className="text-sm whitespace-pre-wrap text-ink-secondary">
+                <CommentBody comment={comment} />
+              </p>
+            )}
           </div>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-2">
-        {!isReply && !comment.deleted ? (
-          replying ? null : (
+      {editing ? null : (
+        <div className="flex flex-wrap items-center gap-2">
+          {!isReply && !comment.deleted ? (
+            replying ? null : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setReplying(true)}
+              >
+                Reply
+              </Button>
+            )
+          ) : null}
+          {canEdit ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setReplying(true)}
+              onClick={() => setEditing(true)}
             >
-              Reply
+              Edit
             </Button>
-          )
-        ) : null}
-        {canDelete ? (
-          <DeleteOwnButton commentId={comment.id} postId={postId} />
-        ) : null}
-      </div>
+          ) : null}
+          {canDelete ? (
+            <DeleteOwnButton commentId={comment.id} postId={postId} />
+          ) : null}
+        </div>
+      )}
       {replying ? (
         <CommentForm
           postId={postId}

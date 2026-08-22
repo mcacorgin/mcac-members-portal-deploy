@@ -14,7 +14,7 @@ import { relativeTime } from "../format";
 import { dismissNotification, markAllRead, openNotification } from "./actions";
 import { presentNotification } from "@/lib/notifications/presentation";
 
-// HOME-03: in-app notifications. Tapping a tagged/comment/reply row marks it
+// HOME-03: in-app notifications. Tapping a tagged/mention/comment/reply row marks it
 // read and follows it to /posts/[postId] (that page may ship from another
 // lane); account_status rows follow to /me. Each row also has a dismiss (×)
 // button that deletes it for good. HTML forbids nested forms, so the dismiss
@@ -62,7 +62,7 @@ export default async function NotificationsPage({
       <ScreenId id="HOME-03" className="mb-2" />
       <PageHeader
         title="Notifications"
-        description="Your own tags, comments, replies, and account updates."
+        description="Your own tags, mentions, comments, replies, and account updates."
         action={
           unread > 0 ? (
             <form action={markAllRead}>
@@ -78,7 +78,7 @@ export default async function NotificationsPage({
         <EmptyState
           glyph="✓"
           title="No notifications yet"
-          body="Tags, comments, replies, and account updates will appear here."
+          body="Tags, mentions, comments, replies, and account updates will appear here."
           action={
             <Button href="/people" variant="secondary">
               Find People

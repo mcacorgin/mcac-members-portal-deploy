@@ -12,7 +12,7 @@ import {
   MAX_ATTACHMENT_BYTES,
   saveAttachment,
 } from "@/lib/attachments";
-import { searchMembers } from "@/lib/directory/queries";
+import { searchMentionableMembers } from "@/lib/posts/queries";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
 import type { MemberOption, ShareFormState } from "./form-state";
 
@@ -190,16 +190,7 @@ export async function searchMembersAction(
   const term = q.trim();
   if (!term) return ok([]);
 
-  const result = await searchMembers(viewer, { q: term, pageSize: 8 });
+  const result = await searchMentionableMembers(viewer, term);
   if (!result.ok) return err(result.code, result.message);
-
-  return ok(
-    result.data.rows
-      .filter((row) => row.id !== viewer!.id)
-      .map((row) => ({
-        id: row.id,
-        name: row.name,
-        detail: [row.city, row.company].filter(Boolean).join(" · "),
-      })),
-  );
+  return ok(result.data);
 }
