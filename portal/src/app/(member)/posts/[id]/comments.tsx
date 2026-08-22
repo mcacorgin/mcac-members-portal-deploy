@@ -1,13 +1,10 @@
 "use client";
 
 import {
-  useEffect,
   useId,
-  useRef,
   useState,
   useTransition,
   type FormEvent,
-  type KeyboardEvent,
   type ReactNode,
 } from "react";
 import Link from "next/link";
@@ -24,6 +21,10 @@ import {
   Textarea,
   cx,
 } from "@/components/ui";
+import {
+  containsMemberMention,
+  InlineMemberMentionTextarea,
+} from "@/components/inline-member-mention-textarea";
 import { relativeTime } from "../display";
 import {
   addCommentAction,
@@ -48,30 +49,6 @@ const MAX_MENTIONS = 10;
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  const first = parts[0][0] ?? "";
-  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? "") : "";
-  return (first + last).toUpperCase();
-}
-
-function MentionOptionName({ name, query }: { name: string; query: string }) {
-  const term = query.trim();
-  const matchStart = name.toLocaleLowerCase().indexOf(term.toLocaleLowerCase());
-  if (!term || matchStart < 0) return <>{name}</>;
-  const matchEnd = matchStart + term.length;
-  return (
-    <>
-      {name.slice(0, matchStart)}
-      <mark className="bg-transparent font-bold text-navy-text">
-        {name.slice(matchStart, matchEnd)}
-      </mark>
-      {name.slice(matchEnd)}
-    </>
-  );
 }
 
 function CommentBody({ comment }: { comment: CommentNode }) {
@@ -104,282 +81,6 @@ function CommentBody({ comment }: { comment: CommentNode }) {
     );
   });
   return <>{parts}</>;
-}
-
-function containsMention(body: string, name: string): boolean {
-  return new RegExp(
-    `(?:^|\\s)@${escapeRegex(name)}(?=\\s|[.,!?;:]|$)`,
-  ).test(body);
-}
-
-type MentionTrigger = {
-  start: number;
-  cursor: number;
-  query: string;
-};
-
-function InlineMentionTextarea({
-  id,
-  value,
-  selected,
-  onChange,
-  onMention,
-  disabled,
-  autoFocus,
-  invalid,
-  describedBy,
-}: {
-  id: string;
-  value: string;
-  selected: CommentMentionOption[];
-  onChange: (value: string) => void;
-  onMention: (member: CommentMentionOption) => void;
-  disabled: boolean;
-  autoFocus?: boolean;
-  invalid?: boolean;
-  describedBy?: string;
-}) {
-  const listboxId = `${id}-mention-listbox`;
-  const statusId = `${id}-mention-status`;
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [trigger, setTrigger] = useState<MentionTrigger | null>(null);
-  const [options, setOptions] = useState<CommentMentionOption[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const requestSeq = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const selectedIds = new Set(selected.map((member) => member.id));
-  const open = trigger !== null;
-  const showMenu = open && Boolean(trigger?.query.trim());
-
-  useEffect(
-    () => () => {
-      requestSeq.current += 1;
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
-
-  function closeMenu() {
-    requestSeq.current += 1;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setTrigger(null);
-    setOptions([]);
-    setSearching(false);
-    setSearchError(null);
-    setActiveIndex(0);
-  }
-
-  function search(query: string) {
-    setSearchError(null);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    const term = query.trim();
-    const seq = ++requestSeq.current;
-    if (!term) {
-      setOptions([]);
-      setSearching(false);
-      return;
-    }
-    if (selected.length >= MAX_MENTIONS) {
-      setOptions([]);
-      setSearching(false);
-      setSearchError(`You can mention up to ${MAX_MENTIONS} members.`);
-      return;
-    }
-    setSearching(true);
-    timerRef.current = setTimeout(async () => {
-      const result = await searchCommentMentionMembersAction(term);
-      if (seq !== requestSeq.current) return;
-      setSearching(false);
-      if (!result.ok) {
-        setSearchError("Member search is unavailable right now.");
-        setOptions([]);
-        return;
-      }
-      setOptions(result.data.filter((member) => !selectedIds.has(member.id)));
-      setActiveIndex(0);
-    }, 200);
-  }
-
-  function updateTrigger(nextValue: string, cursor: number) {
-    const at = cursor - 1;
-    if (
-      at >= 0 &&
-      nextValue[at] === "@" &&
-      (at === 0 || /\s/.test(nextValue[at - 1] ?? ""))
-    ) {
-      setTrigger({ start: at, cursor, query: "" });
-      search("");
-      return;
-    }
-    if (!trigger) return;
-
-    const query = nextValue.slice(trigger.start + 1, cursor);
-    if (
-      cursor <= trigger.start ||
-      query.includes("@") ||
-      query.includes("\n") ||
-      /[()[\]{}]/.test(query) ||
-      /\s{2,}/.test(query) ||
-      query.length > 80
-    ) {
-      closeMenu();
-      return;
-    }
-    setTrigger({ ...trigger, cursor, query });
-    search(query);
-  }
-
-  function selectMention(member: CommentMentionOption) {
-    if (!trigger) return;
-    const trailing = value.slice(trigger.cursor);
-    const spacer = trailing.startsWith(" ") ? "" : " ";
-    const insertion = `@${member.name}${spacer}`;
-    const nextValue =
-      value.slice(0, trigger.start) + insertion + trailing;
-    const nextCursor = trigger.start + insertion.length;
-    onChange(nextValue);
-    onMention(member);
-    closeMenu();
-    requestAnimationFrame(() => {
-      textareaRef.current?.focus();
-      textareaRef.current?.setSelectionRange(nextCursor, nextCursor);
-    });
-  }
-
-  function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (!open) return;
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closeMenu();
-      return;
-    }
-    if (options.length === 0) return;
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      setActiveIndex((index) => (index + 1) % options.length);
-      return;
-    }
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setActiveIndex(
-        (index) => (index - 1 + options.length) % options.length,
-      );
-      return;
-    }
-    if (event.key === "Enter" || event.key === "Tab") {
-      event.preventDefault();
-      selectMention(options[activeIndex]);
-    }
-  }
-
-  return (
-    <div className="relative">
-      <Textarea
-        ref={textareaRef}
-        id={id}
-        aria-haspopup="listbox"
-        aria-controls={showMenu ? listboxId : undefined}
-        aria-activedescendant={
-          showMenu && options[activeIndex]
-            ? `${listboxId}-${options[activeIndex].id}`
-            : undefined
-        }
-        aria-invalid={invalid ? "true" : undefined}
-        aria-describedby={
-          [describedBy, open ? statusId : undefined].filter(Boolean).join(" ") ||
-          undefined
-        }
-        value={value}
-        onChange={(event) => {
-          const nextValue = event.currentTarget.value;
-          const cursor = event.currentTarget.selectionStart;
-          onChange(nextValue);
-          updateTrigger(nextValue, cursor);
-        }}
-        onKeyDown={onKeyDown}
-        onBlur={closeMenu}
-        placeholder="Write a response. Type @ to mention someone"
-        autoComplete="off"
-        disabled={disabled}
-        autoFocus={autoFocus}
-      />
-      <span id={statusId} className="sr-only" aria-live="polite">
-        {searching
-          ? "Searching members"
-          : searchError ??
-            (open && trigger?.query.trim()
-              ? `${options.length} members found`
-              : open
-                ? "Type a member name"
-                : "")}
-      </span>
-      {showMenu ? (
-        <ul
-          id={listboxId}
-          role="listbox"
-          className="absolute inset-x-0 bottom-full z-30 mb-2 grid max-h-[min(14rem,40vh)] gap-0.5 overflow-y-auto rounded-container border border-border bg-surface p-1 shadow-card sm:right-auto sm:w-[min(28rem,100%)] lg:bottom-auto lg:top-full lg:mb-0 lg:mt-2"
-          aria-label="Member mention results"
-        >
-          {searching && options.length === 0 ? (
-            <li role="presentation" className="px-3 py-2 text-sm text-ink-muted">
-              Searching...
-            </li>
-          ) : searchError ? (
-            <li role="presentation" className="px-3 py-2 text-sm text-danger">
-              {searchError}
-            </li>
-          ) : options.length === 0 ? (
-            <li role="presentation" className="px-3 py-2 text-sm text-ink-muted">
-              No approved members match this search.
-            </li>
-          ) : (
-            options.map((option, index) => {
-              return (
-                <li
-                  key={option.id}
-                  id={`${listboxId}-${option.id}`}
-                  role="option"
-                  tabIndex={-1}
-                  aria-selected={index === activeIndex}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  onClick={() => selectMention(option)}
-                  className={cx(
-                    "flex min-h-tap w-full cursor-pointer items-center gap-2.5 rounded-control px-2.5 py-1.5 text-left",
-                    index === activeIndex
-                      ? "bg-surface-subtle"
-                      : "hover:bg-surface-subtle",
-                  )}
-                >
-                  <span
-                    aria-hidden="true"
-                    className="grid size-8 flex-none place-items-center rounded-avatar bg-navy text-[10px] font-semibold tracking-[0.02em] text-white"
-                  >
-                    {initialsOf(option.name)}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-ink">
-                      <MentionOptionName
-                        name={option.name}
-                        query={trigger?.query ?? ""}
-                      />
-                    </span>
-                    {option.detail ? (
-                      <span className="block truncate text-xs text-ink-muted">
-                        {option.detail}
-                      </span>
-                    ) : null}
-                  </span>
-                </li>
-              );
-            })
-          )}
-        </ul>
-      ) : null}
-    </div>
-  );
 }
 
 function actionMessage(code: string, fallback: string): string {
@@ -447,25 +148,31 @@ function CommentForm({
   return (
     <form onSubmit={onSubmit} className="grid gap-1.5" noValidate>
       <Label htmlFor={id}>{label}</Label>
-      <InlineMentionTextarea
+      <InlineMemberMentionTextarea
         id={id}
         value={body}
         onChange={(nextBody) => {
           setBody(nextBody);
           setMentionedMembers((members) =>
-            members.filter((member) => containsMention(nextBody, member.name)),
+            members.filter((member) =>
+              containsMemberMention(nextBody, member.name),
+            ),
           );
           if (error) setError(null);
         }}
         selected={mentionedMembers}
-        onMention={(member) =>
+        onMention={(member, nextBody) => {
+          setBody(nextBody);
           setMentionedMembers((members) =>
             members.some((item) => item.id === member.id)
               ? members
               : [...members, member],
-          )
-        }
+          );
+          if (error) setError(null);
+        }}
         disabled={pending}
+        maxMentions={MAX_MENTIONS}
+        searchMembers={searchCommentMentionMembersAction}
         autoFocus={autoFocus}
         invalid={Boolean(error)}
         describedBy={error ? `${id}-error` : undefined}
