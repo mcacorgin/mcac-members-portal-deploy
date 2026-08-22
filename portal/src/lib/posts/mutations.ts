@@ -10,7 +10,10 @@ import {
 } from "@/lib/authz";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
 import { getConfig } from "@/lib/config";
-import { emitEvent } from "@/lib/outbox";
+import {
+  emitEvent,
+  type OutboxDeliveryScheduler,
+} from "@/lib/outbox";
 import { recordAudit } from "@/lib/audit";
 import {
   createPostInputSchema,
@@ -40,6 +43,7 @@ function fieldErrorsOf(error: z.ZodError): Record<string, string[]> {
 export async function createPost(
   viewer: Viewer | null,
   input: CreatePostInput,
+  scheduleDelivery?: OutboxDeliveryScheduler,
 ): Promise<ActionResult<PostRow>> {
   const accessErr = memberAccessError(viewer);
   if (accessErr) return err(accessErr, "You cannot create posts.");
@@ -93,6 +97,7 @@ export async function createPost(
     ? new Date(Date.now() + expiryDays * 86400000)
     : null;
 
+  const eventIds: number[] = [];
   const post = await db.transaction(async (tx) => {
     const [created] = await tx
       .insert(tables.posts)
@@ -113,16 +118,20 @@ export async function createPost(
           },
         })),
       );
-      await emitEvent(tx, "post.tagged", {
-        postId: created.id,
-        postType: created.type,
-        postTitle: created.title,
-        authorId: v.id,
-        taggedUserIds,
-      });
+      eventIds.push(
+        await emitEvent(tx, "post.tagged", {
+          postId: created.id,
+          postType: created.type,
+          postTitle: created.title,
+          authorId: v.id,
+          taggedUserIds,
+        }),
+      );
     }
     return created;
   });
+
+  scheduleDelivery?.(eventIds);
 
   return ok(post);
 }
@@ -141,6 +150,7 @@ type CommentRow = typeof tables.comments.$inferSelect;
 export async function addComment(
   viewer: Viewer | null,
   input: AddCommentInput,
+  scheduleDelivery?: OutboxDeliveryScheduler,
 ): Promise<ActionResult<CommentRow>> {
   const accessErr = memberAccessError(viewer);
   if (accessErr) return err(accessErr, "You cannot comment.");
@@ -155,7 +165,8 @@ export async function addComment(
     ...new Set(parsed.data.mentionedUserIds.filter((id) => id !== v.id)),
   ].sort();
 
-  return db.transaction(async (tx) => {
+  const eventIds: number[] = [];
+  const result = await db.transaction(async (tx) => {
     const [post] = await tx
       .select()
       .from(tables.posts)
@@ -254,13 +265,15 @@ export async function addComment(
           },
         })),
       );
-      await emitEvent(tx, "comment.mentioned", {
-        postId,
-        postTitle: post.title,
-        commentId: created.id,
-        authorId: v.id,
-        mentionedUserIds,
-      });
+      eventIds.push(
+        await emitEvent(tx, "comment.mentioned", {
+          postId,
+          postTitle: post.title,
+          commentId: created.id,
+          authorId: v.id,
+          mentionedUserIds,
+        }),
+      );
     }
 
     const mentionRecipients = new Set(mentionedUserIds);
@@ -278,13 +291,15 @@ export async function addComment(
             commentId: created.id,
           },
         });
-        await emitEvent(tx, "comment.reply", {
-          postId,
-          postTitle: post.title,
-          commentId: created.id,
-          parentAuthorId: parent.authorId,
-          authorId: v.id,
-        });
+        eventIds.push(
+          await emitEvent(tx, "comment.reply", {
+            postId,
+            postTitle: post.title,
+            commentId: created.id,
+            parentAuthorId: parent.authorId,
+            authorId: v.id,
+          }),
+        );
       }
     } else if (post.authorId !== v.id && !mentionRecipients.has(post.authorId)) {
       await tx.insert(tables.notifications).values({
@@ -297,16 +312,20 @@ export async function addComment(
           commentId: created.id,
         },
       });
-      await emitEvent(tx, "post.comment", {
-        postId,
-        postTitle: post.title,
-        commentId: created.id,
-        authorId: v.id,
-        postAuthorId: post.authorId,
-      });
+      eventIds.push(
+        await emitEvent(tx, "post.comment", {
+          postId,
+          postTitle: post.title,
+          commentId: created.id,
+          authorId: v.id,
+          postAuthorId: post.authorId,
+        }),
+      );
     }
     return ok(created);
   });
+  scheduleDelivery?.(eventIds);
+  return result;
 }
 
 export async function toggleBookmark(

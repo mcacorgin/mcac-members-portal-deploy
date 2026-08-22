@@ -10,6 +10,7 @@ import {
 } from "@/lib/admin/mutations";
 import type { Section, Viewer } from "@/lib/authz";
 import { err, type ActionResult } from "@/lib/contracts/result";
+import { scheduleOutboxDelivery } from "@/lib/notifications/delivery";
 
 // Server actions for ADMIN-02 (and the ADMIN-04 suspend quick action).
 // Authorization happens inside the lib functions; these wrappers only load
@@ -29,7 +30,11 @@ export async function decideAction(
   reason?: string,
 ): Promise<ActionResult<{ status: Viewer["status"] }>> {
   const viewer = await requireViewer();
-  const result = await transitionAccount(viewer, { userId, to, reason });
+  const result = await transitionAccount(
+    viewer,
+    { userId, to, reason },
+    scheduleOutboxDelivery,
+  );
   if (result.ok) revalidateAdmin(userId);
   return result;
 }
@@ -82,6 +87,7 @@ export async function setSectionOverrideAction(
       userId,
       section,
       enabled,
+      scheduleOutboxDelivery,
     );
     if (result.ok) revalidateAdmin(userId);
     return result;

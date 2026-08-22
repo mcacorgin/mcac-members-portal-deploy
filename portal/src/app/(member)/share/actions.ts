@@ -15,6 +15,7 @@ import {
 import { searchMentionableMembers } from "@/lib/posts/queries";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
 import type { MemberOption, ShareFormState } from "./form-state";
+import { scheduleOutboxDelivery } from "@/lib/notifications/delivery";
 
 // SHARE-01 server actions. The posts kernel re-authorizes everything; this
 // file adapts FormData to CreatePostInput and runs the publish-then-attach
@@ -135,13 +136,17 @@ export async function publishShareAction(
     .filter((v): v is string => typeof v === "string" && v.length > 0)
     .slice(0, 20);
 
-  const created = await createPost(viewer, {
-    type,
-    title: text(formData, "title"),
-    body: text(formData, "body"),
-    metadata: built.metadata,
-    taggedUserIds,
-  });
+  const created = await createPost(
+    viewer,
+    {
+      type,
+      title: text(formData, "title"),
+      body: text(formData, "body"),
+      metadata: built.metadata,
+      taggedUserIds,
+    },
+    scheduleOutboxDelivery,
+  );
   if (!created.ok) {
     return {
       status: "error",

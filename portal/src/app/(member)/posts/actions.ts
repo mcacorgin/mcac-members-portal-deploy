@@ -16,6 +16,7 @@ import {
   updatePost,
 } from "@/lib/posts/mutations";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
+import { scheduleOutboxDelivery } from "@/lib/notifications/delivery";
 
 // Server actions for HOME-01/HOME-02 interactions. Each re-authorizes via the
 // posts kernel (defense in depth); this file only adapts inputs and
@@ -44,7 +45,7 @@ export async function addCommentAction(input: {
   mentionedUserIds?: string[];
 }): Promise<ActionResult<{ id: string }>> {
   const viewer = await requireViewer();
-  const result = await addComment(viewer, input);
+  const result = await addComment(viewer, input, scheduleOutboxDelivery);
   if (!result.ok) {
     return err(result.code, result.message, result.fieldErrors);
   }

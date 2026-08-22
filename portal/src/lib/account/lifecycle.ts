@@ -6,7 +6,11 @@ import {
   enabledSections,
   type Viewer,
 } from "@/lib/authz";
-import { emitEvent, type OutboxEventName } from "@/lib/outbox";
+import {
+  emitEvent,
+  type OutboxDeliveryScheduler,
+  type OutboxEventName,
+} from "@/lib/outbox";
 import { recordAudit } from "@/lib/audit";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
 
@@ -33,6 +37,7 @@ export async function transitionAccount(
     to: Viewer["status"];
     reason?: string;
   },
+  scheduleDelivery?: OutboxDeliveryScheduler,
 ): Promise<ActionResult<{ status: Viewer["status"] }>> {
   const denied = adminAccessError(actor);
   if (denied) return err(denied, "Administrator access is required.");
@@ -86,6 +91,7 @@ export async function transitionAccount(
       reason: ["Provide a short reason the applicant will see."],
     });
 
+  const eventIds: number[] = [];
   await db.transaction(async (tx) => {
     await tx
       .update(tables.users)
@@ -110,11 +116,13 @@ export async function transitionAccount(
           ...(enabled ? { enabledSections: enabled } : {}),
         },
       });
-      await emitEvent(tx, eventName, {
-        userId: subject.id,
-        ...(reason ? { reason } : {}),
-        ...(enabled ? { enabledSections: enabled } : {}),
-      });
+      eventIds.push(
+        await emitEvent(tx, eventName, {
+          userId: subject.id,
+          ...(reason ? { reason } : {}),
+          ...(enabled ? { enabledSections: enabled } : {}),
+        }),
+      );
     }
 
     await recordAudit(
@@ -128,6 +136,8 @@ export async function transitionAccount(
       tx,
     );
   });
+
+  scheduleDelivery?.(eventIds);
 
   return ok({ status: input.to });
 }

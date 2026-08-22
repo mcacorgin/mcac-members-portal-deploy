@@ -6,7 +6,10 @@ import { db, tables, type DbOrTx } from "@/db";
 import { getConfig } from "@/lib/config";
 import { sendMail } from "@/lib/mail";
 import { recordAudit } from "@/lib/audit";
-import { emitEvent } from "@/lib/outbox";
+import {
+  emitEvent,
+  type OutboxDeliveryScheduler,
+} from "@/lib/outbox";
 import type { Viewer } from "@/lib/authz";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
 
@@ -332,6 +335,7 @@ export async function getEvidenceStatus(
 export async function submitApplicationEvidence(
   viewer: Viewer | null,
   input: EvidenceInput,
+  scheduleDelivery?: OutboxDeliveryScheduler,
 ): Promise<ActionResult<{ resubmitted: boolean }>> {
   if (!viewer) return err("unauthorized", "Sign in to continue.");
   if (!["pending", "needs_changes", "approved"].includes(viewer.status))
@@ -371,6 +375,7 @@ export async function submitApplicationEvidence(
 
   const resubmitted = viewer.status === "needs_changes";
   const sortedNewTagIds = [...parsed.data.tagIds].sort();
+  const eventIds: number[] = [];
 
   await db.transaction(async (tx) => {
     // onboardingCompletedAt is the "submitted" date the admin evidence card
@@ -498,12 +503,14 @@ export async function submitApplicationEvidence(
           })),
         );
         for (const a of recipients) {
-          await emitEvent(tx, "account.application_submitted", {
-            adminId: a.id,
-            applicantId: viewer.id,
-            applicantName: parsed.data.name,
-            resubmitted,
-          });
+          eventIds.push(
+            await emitEvent(tx, "account.application_submitted", {
+              adminId: a.id,
+              applicantId: viewer.id,
+              applicantName: parsed.data.name,
+              resubmitted,
+            }),
+          );
         }
       }
     }
@@ -519,6 +526,7 @@ export async function submitApplicationEvidence(
         tx,
       );
   });
+  scheduleDelivery?.(eventIds);
   return ok({ resubmitted });
 }
 
