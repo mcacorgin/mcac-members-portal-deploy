@@ -4,6 +4,7 @@ import { adminAccessError, type Viewer } from "@/lib/authz";
 import { recordAudit } from "@/lib/audit";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
 import { buildXlsxWorkbook } from "@/lib/xlsx";
+import { communicationEmail } from "@/lib/account/preferred-contact-email";
 
 // Member dataset export (MEMB-05, ADMIN-04). Exports are an admin surface,
 // so admin-visible fields are included; every cell is sanitized against
@@ -12,6 +13,7 @@ import { buildXlsxWorkbook } from "@/lib/xlsx";
 const HEADERS = [
   "Name",
   "Email",
+  "MCAC communication email",
   "Status",
   "City",
   "Company",
@@ -35,6 +37,8 @@ async function exportRows(): Promise<string[][]> {
       id: tables.users.id,
       name: tables.users.name,
       email: tables.users.email,
+      preferredContactEmail: tables.users.preferredContactEmail,
+      preferredContactEmailVerifiedAt: tables.users.preferredContactEmailVerifiedAt,
       status: tables.users.status,
       createdAt: tables.users.createdAt,
       city: tables.profiles.city,
@@ -69,6 +73,7 @@ async function exportRows(): Promise<string[][]> {
     [
       r.name,
       r.email,
+      communicationEmail(r),
       r.status,
       r.city ?? "",
       r.company ?? "",

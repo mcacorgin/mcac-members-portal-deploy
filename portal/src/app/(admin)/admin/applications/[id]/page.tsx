@@ -132,6 +132,10 @@ export default async function ApplicationDetailPage({
                 <dd className="text-ink">{formatDate(record.createdAt)}</dd>
               </div>
               <div>
+                <dt className="text-xs text-ink-muted">MCAC updates</dt>
+                <dd className="break-all text-ink">{record.communicationEmail}</dd>
+              </div>
+              <div>
                 <dt className="text-xs text-ink-muted">Role</dt>
                 <dd className="text-ink">
                   {record.role === "superadmin"

@@ -7,6 +7,7 @@ import {
   SECTION_LABELS,
 } from "@/lib/notifications/section-labels";
 import type { PostTypeName } from "@/lib/posts/types";
+import { communicationEmail } from "@/lib/account/preferred-contact-email";
 
 // Outbox consumer (docs/build/events.md). Producers write in-app notification
 // rows transactionally; this worker delivers the matching EMAILS (NOTF-02).
@@ -26,9 +27,16 @@ export async function buildOutboxEmails(
   const userEmail = async (id: string) => {
     const u = await db.query.users.findFirst({
       where: eq(tables.users.id, id),
-      columns: { email: true, name: true, status: true, role: true },
+      columns: {
+        email: true,
+        preferredContactEmail: true,
+        preferredContactEmailVerifiedAt: true,
+        name: true,
+        status: true,
+        role: true,
+      },
     });
-    return u ?? null;
+    return u ? { ...u, email: communicationEmail(u) } : null;
   };
 
   switch (row.name) {

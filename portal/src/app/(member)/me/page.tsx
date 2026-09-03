@@ -5,6 +5,7 @@ import { db, tables } from "@/db";
 import { linkedInConfigured, requireViewer } from "@/lib/auth";
 import { hasAdminRole, memberAccessError } from "@/lib/authz";
 import { isLinkedInLinked } from "@/lib/account/linked-accounts";
+import { getPreferredContactEmailState } from "@/lib/account/preferred-contact-email";
 // The codes, the copy and the /sign-in forwarding allowlist share one table so
 // they cannot drift apart.
 import { linkErrorMessage } from "@/lib/account/link-errors";
@@ -60,7 +61,7 @@ export default async function MePage({
   const { linkError } = await searchParams;
   const linkErrorCode = Array.isArray(linkError) ? linkError[0] : linkError;
 
-  const [profile, myTagRows, filtersRes, linkedIn] = await Promise.all([
+  const [profile, myTagRows, filtersRes, linkedIn, emailState] = await Promise.all([
     db.query.profiles.findFirst({
       where: eq(tables.profiles.userId, viewer.id),
     }),
@@ -69,6 +70,7 @@ export default async function MePage({
     }),
     getDirectoryFilters(viewer),
     isLinkedInLinked(viewer.id),
+    getPreferredContactEmailState(viewer.id),
   ]);
 
   // OAuth providers can return a stale error parameter after the account was
@@ -77,7 +79,7 @@ export default async function MePage({
   const errorMessage =
     !linkedIn && linkErrorCode ? linkErrorMessage(linkErrorCode) : null;
 
-  if (!profile || !filtersRes.ok) {
+  if (!profile || !filtersRes.ok || !emailState) {
     return (
       <div className="mx-auto w-full max-w-3xl">
         <ScreenId id="HOME-04" className="mb-2" />
@@ -200,8 +202,8 @@ export default async function MePage({
           Your contact details
         </h3>
         <p className="mb-2 text-[13px] text-ink-secondary">
-          Only you see everything here. Each field is shown to other members
-          according to its visibility choice below.
+          Only you see everything here. The directory fields are shown to other
+          members according to their visibility choices.
         </p>
         <dl className="m-0 grid">
           {contactRows.map((row) => (
@@ -223,6 +225,27 @@ export default async function MePage({
             </div>
           ))}
         </dl>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+          <div className="min-w-0">
+            <strong className="block text-[13px] font-semibold text-ink">
+              Email for MCAC updates
+            </strong>
+            <span className="block truncate text-[13px] text-ink-secondary">
+              {emailState.effectiveEmail}
+            </span>
+            <small className="block text-xs text-ink-muted">
+              Private account setting; not shown in the member directory.
+            </small>
+          </div>
+          <div className="flex items-center gap-2">
+            <Tag selected={Boolean(emailState.preferredEmail)}>
+              {emailState.preferredEmail ? "Verified" : "Sign-in email"}
+            </Tag>
+            <Link href="/me/edit" className="text-[13px] font-medium text-navy-text underline">
+              Change
+            </Link>
+          </div>
+        </div>
         {myTagLabels.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border pt-3">
             {myTagLabels.map((label) => (

@@ -161,50 +161,13 @@ export default async function AdminOverviewPage() {
                 return (
                   <tr
                     key={row.id}
-                    className="ui-table-row relative border-b border-border last:border-b-0 hover:bg-surface-subtle"
+                    className="ui-table-row border-b border-border last:border-b-0 hover:bg-surface-subtle"
                   >
-                    {/*
-                      Row-link overlay pattern: the ONLY interactive element in
-                      the row is this anchor. Its own content (the name) stays
-                      in normal flow inside this cell; a `::after` pseudo-
-                      element is what's absolutely positioned to `inset-0`,
-                      stretching the click/tap target across the whole row.
-                      That pseudo needs a positioned containing block, which
-                      is the `<tr>` above (position: relative works reliably
-                      on table rows in evergreen Chrome/Firefox/Safari - this
-                      is the same "extend the hit area with a pseudo-element"
-                      technique as better-accessibility's hit-area guidance,
-                      just stretched to the full row instead of a small
-                      target). A row-Link-wrapper (`<Link>` around `<tr>`) was
-                      the alternative, but `<tr>` cannot be a child of
-                      anything but `<table>`/`<tbody>` in valid HTML, so that
-                      pattern is not legal here. Every other cell stays plain
-                      text/markup - no second interactive element, so no
-                      nested-interactive violation.
-                    */}
                     <td className="px-4 py-2.5 font-medium text-ink">
-                      <Link
-                        href={`/admin/applications/${row.id}`}
-                        aria-label={`Review application from ${name}`}
-                        className="after:absolute after:inset-0 after:z-[1] after:content-[''] hover:underline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-navy"
-                      >
-                        {name}
-                      </Link>
+                      {name}
                     </td>
                     <td className="px-4 py-2.5 text-ink-secondary">
-                      {/*
-                        Carved out of the row-link overlay: the overlay's
-                        `::after` sits at z-[1] in the ambient stacking
-                        context shared with this `<td>` (neither `<tr>` nor
-                        `<td>` sets a z-index of its own, so no new stacking
-                        context isolates them). A `relative z-[2]` wrapper
-                        here paints above that pseudo-element, so this is the
-                        one span in the row where clicking, dragging to
-                        select, and copying behave like plain text instead of
-                        triggering navigation - the email is the value an
-                        admin most plausibly needs to copy out of this table.
-                      */}
-                      <span className="relative z-[2]">{row.email}</span>
+                      {row.email}
                     </td>
                     <td className="px-4 py-2.5 text-ink-secondary">
                       {row.city || "-"}
@@ -230,20 +193,15 @@ export default async function AdminOverviewPage() {
                         <span className="text-warning">Not yet accepted</span>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-right whitespace-nowrap text-navy">
-                      {/*
-                        Decorative only: the row's one link already carries
-                        the full accessible name ("Review application from
-                        {name}"). Hiding this avoids announcing "Review"
-                        twice per row for screen-reader users.
-                      */}
-                      <span
-                        aria-hidden="true"
-                        className="inline-flex items-center gap-1 font-medium"
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                      <Link
+                        href={`/admin/applications/${row.id}`}
+                        aria-label={`Review application from ${name}`}
+                        className="inline-flex min-h-tap items-center gap-1 font-medium text-navy hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
                       >
                         Review
-                        <span>&rarr;</span>
-                      </span>
+                        <span aria-hidden="true">&rarr;</span>
+                      </Link>
                     </td>
                   </tr>
                 );
