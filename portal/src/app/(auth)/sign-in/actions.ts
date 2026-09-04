@@ -3,6 +3,7 @@
 import { AuthError, CredentialsSignin } from "next-auth";
 import { signIn } from "@/lib/auth";
 import { getCurrentNotice } from "@/lib/account/registration";
+import { safeSignInReturnTo } from "@/lib/safe-return-to";
 
 export type SignInState = { error?: string; email?: string };
 
@@ -29,11 +30,12 @@ export async function signInWithEmail(
     .trim()
     .toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const returnTo = safeSignInReturnTo(formData.get("returnTo"));
   if (!email || !password)
     return { error: "Enter your email and password.", email };
 
   try {
-    await signIn("credentials", { email, password, redirectTo: "/" });
+    await signIn("credentials", { email, password, redirectTo: returnTo });
   } catch (error) {
     // The framework redirect on success must be rethrown.
     if (error instanceof AuthError && isBadCredentials(error)) {
@@ -45,11 +47,13 @@ export async function signInWithEmail(
 }
 
 /** LinkedIn OAuth entry; rendered only when the provider is configured. */
-export async function signInWithLinkedIn(): Promise<void> {
+export async function signInWithLinkedIn(formData: FormData): Promise<void> {
   if (!(await getCurrentNotice())) {
     throw new Error(
       "Member registration is unavailable until MCAC publishes its privacy notice.",
     );
   }
-  await signIn("linkedin", { redirectTo: "/" });
+  await signIn("linkedin", {
+    redirectTo: safeSignInReturnTo(formData.get("returnTo")),
+  });
 }

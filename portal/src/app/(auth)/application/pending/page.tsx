@@ -7,6 +7,8 @@ import {
 import { resolveLandingPath } from "@/lib/account/routing";
 import { Card, PageHeader, ScreenId, StatusBadge } from "@/components/ui";
 import { OptionalConsentsForm } from "@/components/optional-consents-form";
+import { PreferredContactEmailCard } from "@/components/preferred-contact-email-card";
+import { getPreferredContactEmailState } from "@/lib/account/preferred-contact-email";
 import { PendingButton } from "../../_components/pending-button";
 import { signOutAction } from "../../actions";
 import { checkStatusAction } from "./actions";
@@ -32,9 +34,10 @@ export default async function PendingPage() {
   const landing = await resolveLandingPath(viewer);
   if (landing !== "/application/pending") redirect(landing);
 
-  const [state, consentChoices] = await Promise.all([
+  const [state, consentChoices, emailState] = await Promise.all([
     getApplicationState(viewer),
     getOptionalConsents(viewer),
+    getPreferredContactEmailState(viewer.id),
   ]);
   const submittedOn = state.latestConsentAt
     ? dateFormat.format(state.latestConsentAt)
@@ -84,6 +87,7 @@ export default async function PendingPage() {
           Need help with your application? Contact admin@mcac.org.in.
         </p>
       </Card>
+      {emailState ? <PreferredContactEmailCard state={emailState} /> : null}
       <Card className="grid gap-3 p-5">
         <h3 className="text-base font-semibold text-ink">Community updates</h3>
         <p className="text-[13px] text-ink-secondary">

@@ -3,6 +3,7 @@ import { db, tables } from "@/db";
 import { adminAccessError, type Viewer } from "@/lib/authz";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
 import { escapeLike } from "@/lib/sql-text";
+import { communicationEmail } from "@/lib/account/preferred-contact-email";
 
 // Admin reads (ADMIN-01/02/04). ADMIN-02 exposes only the required privacy
 // audit data: notice version, acceptance timestamp, identity, account state.
@@ -104,6 +105,7 @@ export async function getApplicationDetail(
     id: string;
     name: string;
     email: string;
+    communicationEmail: string;
     image: string | null;
     role: Viewer["role"];
     status: Viewer["status"];
@@ -160,6 +162,7 @@ export async function getApplicationDetail(
     id: user.id,
     name: user.name,
     email: user.email,
+    communicationEmail: communicationEmail(user),
     image: user.image,
     role: user.role,
     status: user.status,

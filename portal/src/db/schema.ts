@@ -10,6 +10,7 @@ import {
   primaryKey,
   uniqueIndex,
   index,
+  check,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -69,6 +70,14 @@ export const users = pgTable(
     name: text("name").notNull().default(""),
     email: text("email").notNull(),
     emailVerified: timestamp("email_verified", { mode: "date" }),
+    // Optional verified destination for MCAC portal notifications. This is
+    // deliberately separate from `email`, which remains the authentication
+    // identity and password-recovery address.
+    preferredContactEmail: text("preferred_contact_email"),
+    preferredContactEmailVerifiedAt: timestamp(
+      "preferred_contact_email_verified_at",
+      { mode: "date", withTimezone: true },
+    ),
     image: text("image"),
     passwordHash: text("password_hash"),
     role: userRole("role").notNull().default("member"),
@@ -81,7 +90,17 @@ export const users = pgTable(
     credentialsChangedAt: timestamp("credentials_changed_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().default(utcNow),
   },
-  (t) => [uniqueIndex("users_email_idx").on(t.email)],
+  (t) => [
+    uniqueIndex("users_email_idx").on(t.email),
+    check(
+      "users_preferred_contact_email_pair_check",
+      sql`(${t.preferredContactEmail} is null) = (${t.preferredContactEmailVerifiedAt} is null)`,
+    ),
+    check(
+      "users_preferred_contact_email_normalized_check",
+      sql`${t.preferredContactEmail} is null or ${t.preferredContactEmail} = lower(btrim(${t.preferredContactEmail}))`,
+    ),
+  ],
 );
 
 // Auth.js adapter tables (OAuth account links; sessions unused under JWT
@@ -156,6 +175,42 @@ export const verificationTokens = pgTable(
     expires: timestamp("expires", { mode: "date" }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.identifier, t.token] })],
+);
+
+/**
+ * One live preferred-contact-email request per account. The raw token is sent
+ * only to the proposed address; the database stores its SHA-256 hash.
+ */
+export const preferredContactEmailVerifications = pgTable(
+  "preferred_contact_email_verifications",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    pendingEmail: text("pending_email").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    createdAt: timestamp("created_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", {
+      mode: "date",
+      withTimezone: true,
+    }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("preferred_contact_email_token_hash_idx").on(t.tokenHash),
+    check(
+      "preferred_contact_email_pending_normalized_check",
+      sql`${t.pendingEmail} = lower(btrim(${t.pendingEmail}))`,
+    ),
+    check(
+      "preferred_contact_email_expiry_check",
+      sql`${t.expiresAt} > ${t.createdAt}`,
+    ),
+  ],
 );
 
 export const profiles = pgTable("profiles", {

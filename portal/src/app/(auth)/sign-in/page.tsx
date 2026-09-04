@@ -12,6 +12,7 @@ import { Card, PageHeader, ScreenId } from "@/components/ui";
 import { PendingButton } from "../_components/pending-button";
 import { signInWithLinkedIn } from "./actions";
 import { SignInForm } from "./sign-in-form";
+import { safeSignInReturnTo } from "@/lib/safe-return-to";
 
 export const metadata = { title: "Sign in - MCAC Members Portal" };
 
@@ -22,10 +23,13 @@ export const metadata = { title: "Sign in - MCAC Members Portal" };
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string | string[] }>;
+  searchParams: Promise<{ error?: string | string[]; returnTo?: string | string[] }>;
 }) {
-  const { error } = await searchParams;
+  const { error, returnTo: rawReturnTo } = await searchParams;
   const errorCode = Array.isArray(error) ? error[0] : error;
+  const returnTo = safeSignInReturnTo(
+    Array.isArray(rawReturnTo) ? rawReturnTo[0] : rawReturnTo ?? null,
+  );
 
   const viewer = await requireViewer();
   if (viewer) {
@@ -35,6 +39,7 @@ export default async function SignInPage({
     if (errorCode && !memberAccessError(viewer)) {
       redirect(`/me?linkError=${forwardableError(errorCode)}`);
     }
+    if (returnTo !== "/") redirect(returnTo);
     redirect(await resolveLandingPath(viewer));
   }
 
@@ -63,6 +68,7 @@ export default async function SignInPage({
       <Card className="grid gap-4 p-5">
         {linkedInConfigured ? (
           <form action={signInWithLinkedIn} className="grid">
+            <input type="hidden" name="returnTo" value={returnTo} />
             <PendingButton pendingLabel="Connecting to LinkedIn...">
               Continue with LinkedIn
             </PendingButton>
@@ -82,7 +88,7 @@ export default async function SignInPage({
               or use email
               <span className="h-px flex-1 bg-border" />
             </div>
-            <SignInForm />
+            <SignInForm returnTo={returnTo} />
           </>
         ) : null}
         <div className="grid gap-1 border-t border-border pt-4 text-sm">

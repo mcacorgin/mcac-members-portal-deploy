@@ -6,7 +6,7 @@ import { signInWithEmail, type SignInState } from "./actions";
 
 const initialState: SignInState = {};
 
-export function SignInForm() {
+export function SignInForm({ returnTo = "/" }: { returnTo?: string }) {
   const [state, formAction, pending] = useActionState(
     signInWithEmail,
     initialState,
@@ -14,6 +14,7 @@ export function SignInForm() {
 
   return (
     <form action={formAction} className="grid gap-4">
+      <input type="hidden" name="returnTo" value={returnTo} />
       {state.error ? (
         <p
           role="alert"

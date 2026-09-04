@@ -6,6 +6,8 @@ import { memberAccessError } from "@/lib/authz";
 import { resolveLandingPath } from "@/lib/account/routing";
 import { getDirectoryFilters } from "@/lib/directory/queries";
 import { Button, Card, ErrorState, PageHeader, ScreenId } from "@/components/ui";
+import { getPreferredContactEmailState } from "@/lib/account/preferred-contact-email";
+import { PreferredContactEmailCard } from "@/components/preferred-contact-email-card";
 
 import { OptionalConsentsForm } from "@/components/optional-consents-form";
 import { ProfileForm } from "../profile-form";
@@ -24,7 +26,7 @@ export default async function MeEditPage() {
   if (denied || !maybeViewer) redirect(await resolveLandingPath(maybeViewer));
   const viewer = maybeViewer;
 
-  const [profile, myTagRows, filtersRes] = await Promise.all([
+  const [profile, myTagRows, filtersRes, emailState] = await Promise.all([
     db.query.profiles.findFirst({
       where: eq(tables.profiles.userId, viewer.id),
     }),
@@ -32,6 +34,7 @@ export default async function MeEditPage() {
       where: eq(tables.memberTags.userId, viewer.id),
     }),
     getDirectoryFilters(viewer),
+    getPreferredContactEmailState(viewer.id),
   ]);
 
   const header = (
@@ -43,7 +46,7 @@ export default async function MeEditPage() {
     </div>
   );
 
-  if (!profile || !filtersRes.ok) {
+  if (!profile || !filtersRes.ok || !emailState) {
     return (
       <div className="mx-auto w-full max-w-3xl">
         {header}
@@ -71,6 +74,8 @@ export default async function MeEditPage() {
         title="Edit profile"
         description="Update your details and choose who can see your contact information."
       />
+
+      <PreferredContactEmailCard state={emailState} />
 
       <Card>
         <h3 className="mb-3 text-base font-semibold text-ink">
