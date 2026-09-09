@@ -91,6 +91,9 @@ export default async function PeoplePage({
   }
 
   const { cities, tags } = filtersRes.data;
+  // The URL carries the folded key ("pune"); show the member the tidy label.
+  const cityLabel =
+    cities.find((c) => c.value === city.trim().toLowerCase())?.label ?? city;
   const { rows, total, pageSize } = resultRes.data;
   const start = (page - 1) * pageSize + 1;
   const end = Math.min(total, page * pageSize);
@@ -149,7 +152,7 @@ export default async function PeoplePage({
             <span>City filter</span>
             <span className="flex min-w-0 items-center gap-2">
               <span className="max-w-40 truncate text-ink-muted">
-                {city || "All cities"}
+                {cityLabel || "All cities"}
               </span>
               <span
                 aria-hidden="true"
@@ -163,13 +166,13 @@ export default async function PeoplePage({
             <Select
               id="people-city"
               name="city"
-              defaultValue={city}
+              defaultValue={city.trim().toLowerCase()}
               aria-label="City"
             >
               <option value="">All cities</option>
               {cities.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+                <option key={c.value} value={c.value}>
+                  {c.label}
                 </option>
               ))}
             </Select>

@@ -9,6 +9,7 @@ import {
 } from "@/lib/authz";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
 import { escapeLike } from "@/lib/sql-text";
+import { cityKey, groupCities, type DirectoryCity } from "./cities";
 import { expandQuery } from "./synonyms";
 
 // Directory reads (MEMB-01/02, PEOPLE-01/02). Contact values NEVER leave this
@@ -142,7 +143,15 @@ export async function searchMembers(
     const textMatch = or(exactMatch, ...fuzzyConds)!;
     conditions.push(textMatch);
   }
-  if (input.city) conditions.push(eq(tables.profiles.city, input.city));
+  // Members type their own city, so the stored spelling varies ("pune" vs
+  // "Pune"). Match on the folded value or a member is invisible unless the
+  // searcher happens to pick their exact casing. Old bookmarked ?city= links
+  // keep working because both sides are folded.
+  const cityFilter = cityKey(input.city ?? "");
+  if (cityFilter)
+    conditions.push(
+      sql`lower(trim(${tables.profiles.city})) = ${cityFilter}`,
+    );
   if (input.tagId) {
     const tagged = db
       .select({ userId: tables.memberTags.userId })
@@ -301,7 +310,10 @@ export async function getMemberProfile(
 
 /** Distinct cities and all expertise tags, for the PEOPLE-01 filters. */
 export async function getDirectoryFilters(viewer: Viewer | null): Promise<
-  ActionResult<{ cities: string[]; tags: { id: string; label: string }[] }>
+  ActionResult<{
+    cities: DirectoryCity[];
+    tags: { id: string; label: string }[];
+  }>
 > {
   const denied = memberAccessError(viewer);
   if (denied) return err(denied, "Member access is required.");
@@ -318,7 +330,7 @@ export async function getDirectoryFilters(viewer: Viewer | null): Promise<
       .orderBy(asc(tables.expertiseTags.label)),
   ]);
   return ok({
-    cities: cities.map((c) => c.city).filter(Boolean),
+    cities: groupCities(cities.map((c) => c.city)),
     tags,
   });
 }
