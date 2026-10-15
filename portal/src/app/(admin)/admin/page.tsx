@@ -10,6 +10,7 @@ import {
   StatusBadge,
 } from "@/components/ui";
 import { formatDate } from "../format";
+import { CheckIcon } from "@phosphor-icons/react/dist/ssr/Check";
 
 export const metadata = { title: "Admin overview - MCAC Members Portal" };
 
@@ -66,7 +67,7 @@ export default async function AdminOverviewPage() {
         />
       )}
 
-      <h3 className="mb-3 text-base font-semibold text-ink">Review queue</h3>
+      <h2 className="mb-3 text-base font-semibold text-ink">Review queue</h2>
       {!queue.ok ? (
         <ErrorState
           title="Could not load the review queue"
@@ -74,7 +75,7 @@ export default async function AdminOverviewPage() {
         />
       ) : queue.data.length === 0 ? (
         <EmptyState
-          glyph="✓"
+          glyph={<CheckIcon aria-hidden="true" size={22} />}
           title="No applications waiting"
           body="New registrations appear here as soon as they are submitted."
         />
@@ -110,7 +111,7 @@ export default async function AdminOverviewPage() {
                     </div>
                     <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
                       <div>
-                        <dt className="text-xs text-ink-muted">Submitted</dt>
+                        <dt className="text-xs text-ink-muted">Joined</dt>
                         <dd className="text-ink-secondary">
                           {formatDate(row.createdAt)}
                         </dd>
@@ -149,7 +150,7 @@ export default async function AdminOverviewPage() {
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">City</th>
-                <th className="px-4 py-3 font-medium">Submitted</th>
+                <th className="px-4 py-3 font-medium">Joined</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Privacy notice</th>
                 <th className="px-4 py-3 text-right font-medium">Review</th>

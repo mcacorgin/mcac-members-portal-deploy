@@ -36,8 +36,8 @@ export default async function StatusPage() {
         <StatusBadge status="needs-changes" className="w-fit">
           Needs changes
         </StatusBadge>
-        <div className="grid gap-2 text-[15px] leading-relaxed text-ink">
-          <h3 className="text-base font-semibold">Update requested</h3>
+        <div className="grid gap-2 text-[0.9375rem] leading-relaxed text-ink">
+          <h2 className="text-base font-semibold">Update requested</h2>
           <p>
             An administrator has returned your application for changes. Member
             access remains closed until it is reviewed again.
@@ -60,10 +60,10 @@ export default async function StatusPage() {
         <StatusBadge status="rejected" className="w-fit">
           Application not approved
         </StatusBadge>
-        <div className="grid gap-2 text-[15px] leading-relaxed text-ink">
-          <h3 className="text-base font-semibold">
+        <div className="grid gap-2 text-[0.9375rem] leading-relaxed text-ink">
+          <h2 className="text-base font-semibold">
             Your application was not approved
-          </h3>
+          </h2>
           {state.statusReason ? (
             <p className="rounded-control bg-danger-bg px-3 py-2.5 text-sm text-danger">
               <strong>Reason recorded:</strong> {state.statusReason}
@@ -79,8 +79,8 @@ export default async function StatusPage() {
         <StatusBadge status="suspended" className="w-fit">
           Access restricted
         </StatusBadge>
-        <div className="grid gap-2 text-[15px] leading-relaxed text-ink">
-          <h3 className="text-base font-semibold">This account is suspended</h3>
+        <div className="grid gap-2 text-[0.9375rem] leading-relaxed text-ink">
+          <h2 className="text-base font-semibold">This account is suspended</h2>
           {state.statusReason ? (
             <p className="rounded-control bg-danger-bg px-3 py-2.5 text-sm text-danger">
               <strong>Reason recorded:</strong> {state.statusReason}
@@ -113,8 +113,8 @@ export default async function StatusPage() {
         </form>
       </Card>
       <Card className="grid gap-3 p-5">
-        <h3 className="text-base font-semibold text-ink">Community updates</h3>
-        <p className="text-[13px] text-ink-secondary">
+        <h2 className="text-base font-semibold text-ink">Community updates</h2>
+        <p className="text-[0.8125rem] text-ink-secondary">
           Optional community updates from the privacy notice. Change this at
           any time, whatever happens to your application.
         </p>

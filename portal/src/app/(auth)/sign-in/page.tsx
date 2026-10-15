@@ -9,6 +9,7 @@ import {
   signInErrorMessage,
 } from "@/lib/account/link-errors";
 import { Card, PageHeader, ScreenId } from "@/components/ui";
+import { AdminContactLine } from "@/components/admin-contact-line";
 import { PendingButton } from "../_components/pending-button";
 import { signInWithLinkedIn } from "./actions";
 import { SignInForm } from "./sign-in-form";
@@ -53,7 +54,7 @@ export default async function SignInPage({
     <div className="grid gap-4">
       <PageHeader
         title="Continue to MCAC"
-        description="A private, vetted members network. Applications require privacy acceptance, contact choices, application details, and administrator approval before any member content becomes available."
+        description="MCAC is a private network for approved members. Sign in to continue."
         action={<ScreenId id="AUTH-01" />}
         className="mb-1"
       />
@@ -100,14 +101,26 @@ export default async function SignInPage({
               Forgot password?
             </Link>
           ) : null}
-          <p className="flex min-h-tap items-center gap-1 text-ink-secondary">
+          <p className="flex min-h-tap flex-wrap items-center gap-x-1 text-ink-secondary">
             New to MCAC?
-            <Link href="/register" className="font-medium text-navy-text">
+            <Link
+              href="/register"
+              className="inline-flex min-h-tap items-center font-medium text-navy-text"
+            >
               Start an application
             </Link>
           </p>
+          <AdminContactLine lead="Need help?" />
         </div>
       </Card>
+      <p className="text-sm">
+        <Link
+          href="/privacy"
+          className="inline-flex min-h-tap items-center font-medium text-navy-text"
+        >
+          Privacy notice
+        </Link>
+      </p>
     </div>
   );
 }

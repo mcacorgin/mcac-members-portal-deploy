@@ -40,8 +40,8 @@ export const SYNONYMS: Record<string, string[]> = {
   "msme": ["sme", "business advisory"],
   "sme": ["msme", "business advisory"],
   "erp": ["business analysis", "it advisory"],
-  "audit": ["chartered accountant"],
-  "ca": ["chartered accountant", "audit"],
+  "audit": ["chartered accountant", "chartered accountancy"],
+  "ca": ["chartered accountant", "chartered accountancy", "audit"],
 };
 
 const MAX_TERMS = 6;

@@ -17,16 +17,15 @@ export default async function ContactVisibilityPage() {
   return (
     <div className="grid gap-4">
       <PageHeader
-        title="Contact visibility choices"
-        description="Choose each contact field's audience. These choices are separate from the privacy notice you just accepted, are never implied by it, and can be changed later from your profile."
+        title="Who can see your contact details?"
+        description="Choose who can see your phone, email and LinkedIn. You can change this later under Me."
         action={<ScreenId id="AUTH-03" />}
         className="mb-1"
       />
       <Card className="grid gap-4 p-5">
         <p className="rounded-control bg-navy-tint px-3 py-2.5 text-sm text-navy-text">
-          MCAC administrators always need your identity and a reachable phone
-          number to operate your account. That requirement does not make any
-          field visible to members; only the choices below do.
+          MCAC admins can always see your details. Other members see only what
+          you mark as visible.
         </p>
         <VisibilityForm />
       </Card>

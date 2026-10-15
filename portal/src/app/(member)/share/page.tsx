@@ -9,7 +9,7 @@ import {
 import { Button, ErrorState, PageHeader, ScreenId } from "@/components/ui";
 import { Composer } from "./composer";
 
-export const metadata = { title: "Share - MCAC Members Portal" };
+export const metadata = { title: "Post - MCAC Members Portal" };
 
 // SHARE-01 - composer for every post type whose section is enabled for the
 // viewer. Rendered as a child of the (member) shell layout.
@@ -24,7 +24,7 @@ export default async function SharePage() {
   return (
     <div className="mx-auto w-full max-w-3xl">
       <PageHeader
-        title="Share"
+        title="Post"
         description="Publish an opportunity, job, knowledge item, or event to the network."
         action={<ScreenId id="SHARE-01" />}
       />

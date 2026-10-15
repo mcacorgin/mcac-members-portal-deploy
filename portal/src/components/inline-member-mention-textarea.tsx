@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { Textarea, cx } from "@/components/ui";
+import { initialsOf } from "@/lib/initials";
 
 export type MemberMentionOption = {
   id: string;
@@ -23,14 +24,6 @@ type MentionTrigger = {
   cursor: number;
   query: string;
 };
-
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  const first = parts[0][0] ?? "";
-  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? "") : "";
-  return (first + last).toUpperCase();
-}
 
 function OptionName({ name, query }: { name: string; query: string }) {
   const term = query.trim();
@@ -307,7 +300,7 @@ export function InlineMemberMentionTextarea({
               >
                 <span
                   aria-hidden="true"
-                  className="grid size-8 flex-none place-items-center rounded-avatar bg-navy text-[10px] font-semibold tracking-[0.02em] text-white"
+                  className="grid size-8 flex-none place-items-center rounded-avatar bg-navy text-[0.625rem] font-semibold tracking-[0.02em] text-white"
                 >
                   {initialsOf(option.name)}
                 </span>

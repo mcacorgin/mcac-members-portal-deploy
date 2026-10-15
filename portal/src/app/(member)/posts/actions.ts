@@ -29,6 +29,33 @@ function revalidatePost(postId: string) {
   revalidatePath("/saved");
 }
 
+/**
+ * An event's start arrives as the datetime-local value the member typed, with
+ * no zone. Parse it here, in the server's zone, exactly as the composer does
+ * (share/actions.ts), so an edited event keeps the one contract described in
+ * lib/posts/calendar.ts. Metadata without a startsAt passes through.
+ */
+function withStoredStartsAt(
+  metadata: Record<string, unknown>,
+):
+  | { metadata: Record<string, unknown> }
+  | { fieldErrors: Record<string, string[]> } {
+  if (!metadata || typeof metadata !== "object" || !("startsAt" in metadata)) {
+    return { metadata };
+  }
+  const raw =
+    typeof metadata.startsAt === "string" ? metadata.startsAt.trim() : "";
+  const parsed = raw ? new Date(raw) : null;
+  if (!parsed || Number.isNaN(parsed.getTime())) {
+    return {
+      fieldErrors: {
+        "metadata.startsAt": ["Enter the event date and time."],
+      },
+    };
+  }
+  return { metadata: { ...metadata, startsAt: parsed.toISOString() } };
+}
+
 export async function toggleBookmarkAction(
   postId: string,
 ): Promise<ActionResult<{ bookmarked: boolean }>> {
@@ -97,7 +124,15 @@ export async function editPostAction(input: {
   metadata: Record<string, unknown>;
 }): Promise<ActionResult<{ id: string }>> {
   const viewer = await requireViewer();
-  const result = await updatePost(viewer, input);
+  // Before updatePost: its schema only accepts the ISO string made here.
+  const built = withStoredStartsAt(input.metadata);
+  if ("fieldErrors" in built) {
+    return err("validation", "Check the highlighted fields.", built.fieldErrors);
+  }
+  const result = await updatePost(viewer, {
+    ...input,
+    metadata: built.metadata,
+  });
   if (!result.ok) return err(result.code, result.message, result.fieldErrors);
   revalidatePost(input.postId);
   return ok({ id: result.data.id });

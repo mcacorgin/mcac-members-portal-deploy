@@ -57,7 +57,7 @@ test("approved member can navigate the optimized member experience", async ({
   for (const [path, heading] of [
     ["/home", "Home"],
     ["/people", "People"],
-    ["/share", "Share"],
+    ["/share", "Post"],
     ["/saved", "Saved"],
     ["/notifications", "Notifications"],
     ["/me", "Me"],
@@ -87,10 +87,10 @@ test("opportunity Server Action persists the mandatory role in the optimized run
     await signIn(page, "member@example.com");
     await page.waitForURL("**/home");
     await page.goto("/share");
-    await page.getByRole("button", { name: "Opportunity" }).click();
+    await page.getByRole("button", { name: "Business Opportunity" }).click();
     await page.getByLabel("Title (required)").fill(title);
     await page
-      .getByLabel("Opportunity type (required)")
+      .getByLabel("Business opportunity type (required)")
       .selectOption("sell_side");
     await page.getByLabel("Primary industry (required)").fill("Regression testing");
     await page.getByLabel("Business geography (required)").fill("Mumbai");
@@ -103,7 +103,7 @@ test("opportunity Server Action persists the mandatory role in the optimized run
     await page.getByLabel("Asking range to (required)").fill("20");
     await page.getByLabel("Business location (required)").fill("Mumbai");
     await page
-      .getByLabel("Your role in the opportunity (required)")
+      .getByLabel("Your role in the business opportunity (required)")
       .selectOption("mandate_holder");
     await page
       .getByLabel("Brief (required)")

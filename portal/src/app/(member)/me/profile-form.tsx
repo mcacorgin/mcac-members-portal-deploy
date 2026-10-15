@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import {
   Button,
   FieldError,
@@ -10,6 +10,8 @@ import {
   cx,
 } from "@/components/ui";
 import type { ActionResult } from "@/lib/contracts/result";
+import { PhoneInput } from "@/components/phone-input";
+import { splitE164 } from "@/lib/phone";
 import { saveProfile } from "./actions";
 
 // HOME-04 profile editor. Submits through submitApplicationEvidence (the
@@ -22,6 +24,7 @@ export type ProfileDefaults = {
   phone: string;
   company: string;
   title: string;
+  profession: string;
   bio: string;
   linkedinUrl: string;
   tagIds: string[];
@@ -30,36 +33,44 @@ export type ProfileDefaults = {
 export function ProfileForm({
   defaults,
   allTags,
+  professionOptions,
 }: {
   defaults: ProfileDefaults;
   allTags: { id: string; label: string }[];
+  /** Existing member professions, for the profession field's typeahead. */
+  professionOptions: string[];
 }) {
   const [state, formAction, pending] = useActionState<
     ActionResult | null,
     FormData
   >(saveProfile, null);
+  const messageRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (state) {
+      messageRef.current?.focus();
+    }
+  }, [state]);
+  // The "Add" links on /me point at a field here (#me-phone, #me-linkedin).
+  // The router's own hash scroll can run while /me/edit's loading.tsx is
+  // still showing, before this form exists, and then it is lost. So once
+  // the form mounts, bring that field's label into view and focus the field.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    const form = formRef.current;
+    if (!id || !form) return;
+    const field = form.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
+    if (!field) return;
+    const label = form.querySelector(`label[for="${CSS.escape(id)}"]`);
+    (label ?? field).scrollIntoView({ block: "start" });
+    field.focus({ preventScroll: true });
+  }, []);
+  const storedPhone = splitE164(defaults.phone);
   const fieldError = (name: string) =>
     state && !state.ok ? state.fieldErrors?.[name]?.[0] : undefined;
 
   return (
-    <form action={formAction} className="grid gap-4">
-      {state?.ok ? (
-        <p
-          role="status"
-          className="rounded-control border border-success/25 bg-success-bg px-3.5 py-2.5 font-medium text-success"
-        >
-          Profile saved.
-        </p>
-      ) : null}
-      {state && !state.ok ? (
-        <p
-          role="alert"
-          className="rounded-control border border-danger/25 bg-danger-bg px-3.5 py-2.5 font-medium text-danger"
-        >
-          {state.message}
-        </p>
-      ) : null}
-
+    <form ref={formRef} action={formAction} className="grid gap-4">
       <FormField label="Full name" htmlFor="me-name" error={fieldError("name")}>
         <Input
           id="me-name"
@@ -77,6 +88,7 @@ export function ProfileForm({
           <Input
             id="me-city"
             name="city"
+            autoComplete="address-level2"
             defaultValue={defaults.city}
             required
             aria-invalid={fieldError("city") ? "true" : undefined}
@@ -84,14 +96,14 @@ export function ProfileForm({
           />
         </FormField>
         <FormField label="Phone" htmlFor="me-phone" error={fieldError("phone")}>
-          <Input
-            id="me-phone"
-            name="phone"
-            type="tel"
-            defaultValue={defaults.phone}
+          <PhoneInput
+            phoneId="me-phone"
+            countryCodeId="me-country-code"
+            defaultNational={storedPhone.national}
+            defaultCountryCode={storedPhone.countryCode}
             required
-            aria-invalid={fieldError("phone") ? "true" : undefined}
-            aria-describedby={
+            phoneInvalid={Boolean(fieldError("phone"))}
+            phoneDescribedBy={
               fieldError("phone") ? "me-phone-error" : undefined
             }
           />
@@ -104,6 +116,7 @@ export function ProfileForm({
           <Input
             id="me-company"
             name="company"
+            autoComplete="organization"
             defaultValue={defaults.company}
             required
             aria-invalid={fieldError("company") ? "true" : undefined}
@@ -116,6 +129,7 @@ export function ProfileForm({
           <Input
             id="me-title"
             name="title"
+            autoComplete="organization-title"
             defaultValue={defaults.title}
             required
             aria-invalid={fieldError("title") ? "true" : undefined}
@@ -123,6 +137,30 @@ export function ProfileForm({
           />
         </FormField>
       </div>
+
+      <FormField
+        label="Profession"
+        htmlFor="me-profession"
+        hint="What you do, in a few words. For example Chartered Accountant or M&A Advisor. Members can search for it."
+        error={fieldError("profession")}
+      >
+        <Input
+          id="me-profession"
+          name="profession"
+          list="me-profession-options"
+          defaultValue={defaults.profession}
+          required
+          aria-invalid={fieldError("profession") ? "true" : undefined}
+          aria-describedby={
+            fieldError("profession") ? "me-profession-error" : undefined
+          }
+        />
+        <datalist id="me-profession-options">
+          {professionOptions.map((label) => (
+            <option key={label} value={label} />
+          ))}
+        </datalist>
+      </FormField>
 
       <FormField
         label="LinkedIn URL (optional)"
@@ -143,12 +181,19 @@ export function ProfileForm({
         />
       </FormField>
 
-      <FormField label="About" htmlFor="me-bio" error={fieldError("bio")}>
-        <Textarea id="me-bio" name="bio" defaultValue={defaults.bio} />
+      <FormField label="Professional summary" htmlFor="me-bio" error={fieldError("bio")}>
+        <Textarea
+          id="me-bio"
+          name="bio"
+          defaultValue={defaults.bio}
+          required
+          aria-invalid={fieldError("bio") ? "true" : undefined}
+          aria-describedby={fieldError("bio") ? "me-bio-error" : undefined}
+        />
       </FormField>
 
       <fieldset className="m-0 grid gap-2 border-0 p-0">
-        <legend className="mb-1 block p-0 text-[13px] font-medium text-ink">
+        <legend className="mb-1 block p-0 text-[0.8125rem] font-medium text-ink">
           Expertise areas (choose at least one)
         </legend>
         <div className="flex flex-wrap gap-2">
@@ -174,10 +219,30 @@ export function ProfileForm({
         <FieldError>{fieldError("tagIds")}</FieldError>
       </fieldset>
 
-      <div>
+      <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={pending}>
-          {pending ? "Saving profile..." : "Save profile"}
+          {pending ? "Saving profile…" : "Save profile"}
         </Button>
+        {state?.ok ? (
+          <p
+            ref={messageRef}
+            role="status"
+            tabIndex={-1}
+            className="text-sm font-medium text-success"
+          >
+            Profile saved.
+          </p>
+        ) : null}
+        {state && !state.ok ? (
+          <p
+            ref={messageRef}
+            role="alert"
+            tabIndex={-1}
+            className="text-sm font-medium text-danger"
+          >
+            {state.message}
+          </p>
+        ) : null}
       </div>
     </form>
   );

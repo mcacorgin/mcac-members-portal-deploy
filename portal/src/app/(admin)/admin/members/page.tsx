@@ -112,7 +112,7 @@ export default async function MembersPage({
         action="/admin/members"
         className="mb-4 flex flex-wrap items-end gap-2"
       >
-        <div className="min-w-48 flex-1">
+        <div className="min-w-[min(12rem,100%)] flex-1">
           <label htmlFor="member-search" className="sr-only">
             Search members by name or email
           </label>
@@ -124,7 +124,7 @@ export default async function MembersPage({
             placeholder="Search by name or email"
           />
         </div>
-        <div className="w-44">
+        <div className="w-44 max-w-full">
           <label htmlFor="member-status" className="sr-only">
             Filter by status
           </label>
@@ -203,7 +203,7 @@ export default async function MembersPage({
                         >
                           {row.name || "Unnamed account"}
                           {row.role !== "member" ? (
-                            <span className="ml-2 rounded-full bg-navy-tint px-2 py-0.5 text-[11px] font-medium text-navy-text">
+                            <span className="ml-2 rounded-full bg-navy-tint px-2 py-0.5 text-[0.6875rem] font-medium text-navy-text">
                               {row.role === "superadmin" ? "Super admin" : "Admin"}
                             </span>
                           ) : null}

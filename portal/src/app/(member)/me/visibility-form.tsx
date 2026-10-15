@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { Button, FormField, Select } from "@/components/ui";
 import type { ActionResult } from "@/lib/contracts/result";
 import { saveVisibility } from "./actions";
@@ -49,26 +49,15 @@ export function VisibilityForm({
     ActionResult | null,
     FormData
   >(saveVisibility, null);
+  const messageRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (state) {
+      messageRef.current?.focus();
+    }
+  }, [state]);
 
   return (
     <form action={formAction} className="grid gap-4">
-      {state?.ok ? (
-        <p
-          role="status"
-          className="rounded-control border border-success/25 bg-success-bg px-3.5 py-2.5 font-medium text-success"
-        >
-          Visibility choices saved.
-        </p>
-      ) : null}
-      {state && !state.ok ? (
-        <p
-          role="alert"
-          className="rounded-control border border-danger/25 bg-danger-bg px-3.5 py-2.5 font-medium text-danger"
-        >
-          {state.message}
-        </p>
-      ) : null}
-
       <div className="grid gap-4 sm:grid-cols-3">
         <FormField label="Phone" htmlFor="vis-phone">
           <VisibilitySelect
@@ -93,10 +82,30 @@ export function VisibilityForm({
         </FormField>
       </div>
 
-      <div>
+      <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" variant="secondary" disabled={pending}>
-          {pending ? "Saving choices..." : "Save visibility choices"}
+          {pending ? "Saving choices…" : "Save visibility choices"}
         </Button>
+        {state?.ok ? (
+          <p
+            ref={messageRef}
+            role="status"
+            tabIndex={-1}
+            className="text-sm font-medium text-success"
+          >
+            Visibility choices saved.
+          </p>
+        ) : null}
+        {state && !state.ok ? (
+          <p
+            ref={messageRef}
+            role="alert"
+            tabIndex={-1}
+            className="text-sm font-medium text-danger"
+          >
+            {state.message}
+          </p>
+        ) : null}
       </div>
     </form>
   );

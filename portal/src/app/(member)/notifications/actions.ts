@@ -7,10 +7,11 @@ import {
   dismissNotification as dismissNotificationRow,
   markAllNotificationsRead,
   markNotificationRead,
+  markNotificationsReadByIds,
 } from "@/lib/notifications/queries";
 
-// HOME-03 server actions. Both re-authorize through the queries module
-// (defense in depth) and refresh the shell so the bell badge updates.
+// HOME-03 server actions. Each re-authorizes through the queries module
+// (defense in depth) and refreshes the shell so the bell badge updates.
 
 // The only screens a notification may follow to. Server-action arguments are
 // untrusted; anything else (including protocol-relative //host URLs) falls
@@ -35,6 +36,18 @@ export async function markAllRead(): Promise<void> {
   const viewer = await requireViewer();
   await markAllNotificationsRead(viewer);
   revalidatePath("/", "layout");
+}
+
+/**
+ * Opening the bell tray clears what it showed: mark read the unread rows it
+ * was rendered with (`ids`). Anything it did not show stays unread. The
+ * argument is untrusted; the queries module takes at most 20 ids and only
+ * ever touches the signed-in member's own rows.
+ */
+export async function markShownNotificationsRead(ids: unknown): Promise<void> {
+  const viewer = await requireViewer();
+  const result = await markNotificationsReadByIds(viewer, ids);
+  if (result.ok) revalidatePath("/", "layout");
 }
 
 /** Remove one notification from the viewer's own list for good. */

@@ -49,6 +49,13 @@ export default function RootLayout({
         />
       </head>
       <body className="flex min-h-full flex-col bg-bg text-ink">
+        {/* Every shell's <main> carries id="main". */}
+        <a
+          href="#main"
+          className="sr-only z-50 rounded-control bg-surface px-4 py-3 font-semibold text-navy-text shadow-card focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+        >
+          Skip to content
+        </a>
         {children}
         <SpeedInsights />
       </body>

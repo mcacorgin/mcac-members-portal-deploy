@@ -71,17 +71,32 @@ export const MATERIAL_LABELS: Record<(typeof MATERIAL_VALUES)[number], string> =
 
 export const CURRENCY_VALUES = ["INR", "USD", "EUR", "GBP", "Other"] as const;
 
+// Each field a member can leave empty or on its placeholder has its own
+// message, so zod's default text ("Invalid option: expected one of ...")
+// never shows under a field. An empty amount arrives as NaN. zod 4's
+// z.number() rejects Infinity itself (.finite() is a no-op), so the "valid
+// amount" message is set here too.
 const amountSchema = z
-  .number()
-  .nonnegative("Enter a non-negative amount.")
-  .finite("Enter a valid amount.");
+  .number({
+    error: (issue) =>
+      typeof issue.input === "number" && !Number.isNaN(issue.input)
+        ? "Enter a valid amount."
+        : "Enter an amount.",
+  })
+  .nonnegative("Enter a non-negative amount.");
+
+const STAKE_PERCENT_MESSAGE = "Enter a stake from 0 to 100.";
 
 const commonMandateMetadataSchema = z.object({
-  roleInOpportunity: z.enum(OPPORTUNITY_ROLE_VALUES),
+  roleInOpportunity: z.enum(OPPORTUNITY_ROLE_VALUES, {
+    error: "Choose your role.",
+  }),
   industry: z.string().min(1, "Enter the primary industry."),
-  specialization: z.string().max(160).optional(),
+  specialization: z.string().max(160, "Use 160 characters or fewer.").optional(),
   geography: z.string().min(1, "Enter a geography."),
-  mandateBasis: z.enum(MANDATE_BASIS_VALUES),
+  mandateBasis: z.enum(MANDATE_BASIS_VALUES, {
+    error: "Choose the mandate basis.",
+  }),
   mandateStartDate: z
     .string()
     .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Choose a mandate start month."),
@@ -92,7 +107,7 @@ const commonMandateMetadataSchema = z.object({
   requestedAction: z
     .string()
     .min(1, "Say what you need from the network."),
-  currency: z.enum(CURRENCY_VALUES),
+  currency: z.enum(CURRENCY_VALUES, { error: "Choose a currency." }),
   amountMin: amountSchema,
   amountMax: amountSchema,
 });
@@ -104,7 +119,11 @@ const sellSideOpportunityMetadataSchema = commonMandateMetadataSchema
       .array(z.enum(TRANSACTION_STRUCTURE_VALUES))
       .min(1, "Choose at least one transaction structure."),
     businessLocation: z.string().min(1, "Enter the business location."),
-    stakePercent: z.number().min(0).max(100).finite().optional(),
+    stakePercent: z
+      .number({ error: STAKE_PERCENT_MESSAGE })
+      .min(0, STAKE_PERCENT_MESSAGE)
+      .max(100, STAKE_PERCENT_MESSAGE)
+      .optional(),
     revenue: amountSchema.optional(),
     ebitda: amountSchema.optional(),
   })
@@ -130,6 +149,7 @@ const buySideOpportunityMetadataSchema = commonMandateMetadataSchema
 export const mandateOpportunityMetadataSchema = z.discriminatedUnion(
   "mandateType",
   [sellSideOpportunityMetadataSchema, buySideOpportunityMetadataSchema],
+  { error: "Choose a business opportunity type." },
 );
 
 // Posts created before the Friday mandate form stay readable and editable,

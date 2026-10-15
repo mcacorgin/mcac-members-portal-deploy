@@ -40,6 +40,11 @@ const linkedInOptions =
     ? { issuer: process.env.AUTH_LINKEDIN_ISSUER }
     : {};
 
+// Issue #71 (stale-session feedback): absolute session lifetime cap and
+// rolling refresh window, in seconds. Exported for tests.
+export const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
+export const SESSION_UPDATE_AGE_SECONDS = 24 * 60 * 60;
+
 const baseConfig: NextAuthConfig = {
   // Set explicitly, with the same fallback next-auth would apply
   // (next-auth/lib/env.js:22, which only fills a nullish secret). The gate
@@ -57,7 +62,14 @@ const baseConfig: NextAuthConfig = {
     sessionsTable: tables.sessions,
     verificationTokensTable: tables.verificationTokens,
   }),
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    // Issue #71 (stale-session feedback): cap absolute session lifetime at
+    // 7 days instead of the Auth.js 30-day default. updateAge keeps the
+    // 24-hour rolling refresh so active members are not signed out mid-day.
+    maxAge: SESSION_MAX_AGE_SECONDS,
+    updateAge: SESSION_UPDATE_AGE_SECONDS,
+  },
   // OAuth callback errors (e.g. OAuthAccountNotLinked) land back on the
   // sign-in page, which renders a friendly message from the error param.
   pages: { signIn: "/sign-in", error: "/sign-in" },

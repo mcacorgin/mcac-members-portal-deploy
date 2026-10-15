@@ -13,7 +13,7 @@ import { SECTION_LABELS } from "@/lib/notifications/section-labels";
 // Pure formatting only - all authorization stays in src/lib.
 
 export const TYPE_LABELS: Record<PostTypeName, string> = {
-  opportunity: "Opportunity",
+  opportunity: "Business Opportunity",
   job: "Job",
   knowledge: "Knowledge",
   event: "Event",
@@ -66,6 +66,11 @@ export function daysLeft(value: Date | string | null): number | null {
   const diff = new Date(value).getTime() - Date.now();
   if (diff <= 0) return null;
   return Math.ceil(diff / 86400000);
+}
+
+/** "3 days left" / "1 day left", singular-aware. */
+export function formatDaysLeft(days: number): string {
+  return days === 1 ? "1 day left" : `${days} days left`;
 }
 
 function str(metadata: Record<string, unknown>, key: string): string | null {

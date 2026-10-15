@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { cx } from "@/components/ui";
+import { BookmarkSimpleIcon } from "@phosphor-icons/react/dist/csr/BookmarkSimple";
 import { toggleBookmarkAction } from "./actions";
 
 export type BookmarkButtonProps = {
@@ -24,6 +25,7 @@ export function BookmarkButton({
   const [pending, startTransition] = useTransition();
 
   function onToggle() {
+    if (pending) return;
     const next = !saved;
     setSaved(next);
     setFailed(false);
@@ -40,23 +42,24 @@ export function BookmarkButton({
 
   return (
     <span className={cx("inline-flex items-center gap-1.5", className)}>
-      {failed ? (
-        <span className="text-xs text-danger">Could not save</span>
-      ) : null}
+      <span role="status" className="text-xs text-danger empty:-mr-1.5">
+        {failed ? "Could not save" : ""}
+      </span>
       <button
         type="button"
         onClick={onToggle}
-        disabled={pending}
         aria-pressed={saved}
         aria-label={saved ? "Remove from Saved" : "Save this post"}
         className={cx(
-          "inline-flex min-h-tap cursor-pointer items-center gap-1.5 rounded-control px-2.5 text-sm font-medium transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed",
+          "inline-flex min-h-tap cursor-pointer items-center gap-1.5 rounded-control px-2.5 text-sm font-medium transition-[color,background-color,scale] duration-150 ease-out-strong hover:bg-surface-subtle active:scale-[0.96]",
           saved ? "text-navy-text" : "text-ink-secondary",
         )}
       >
-        <span aria-hidden="true" className="text-base leading-none">
-          {saved ? "★︎" : "☆︎"}
-        </span>
+        <BookmarkSimpleIcon
+          aria-hidden="true"
+          size={18}
+          weight={saved ? "fill" : "regular"}
+        />
         {saved ? "Saved" : "Save"}
       </button>
     </span>

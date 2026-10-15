@@ -15,7 +15,7 @@ export function RemovePostForm({ postId }: { postId: string }) {
   return (
     <form action={formAction} className="mt-3 flex flex-wrap items-end gap-2">
       <input type="hidden" name="postId" value={postId} />
-      <div className="min-w-56 flex-1">
+      <div className="min-w-[min(14rem,100%)] flex-1">
         <Input
           name="reason"
           placeholder="Reason shown in the audit log (required)"

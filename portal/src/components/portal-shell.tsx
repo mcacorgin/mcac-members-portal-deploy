@@ -1,9 +1,13 @@
 import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { BrandLockup } from "@/components/ui";
+import { CollapsibleMobileHeader } from "@/components/collapsible-mobile-header";
 import { MemberRailNav, MemberTabs } from "@/app/(member)/member-nav";
 import { NotificationMenu } from "@/app/(member)/notification-menu";
-import { listNotifications } from "@/lib/notifications/queries";
+import {
+  listNotifications,
+  NOTIFICATION_TRAY_MAX,
+} from "@/lib/notifications/queries";
 import type { Viewer } from "@/lib/authz";
 
 // Shared rail/header/tabs shell, extracted mechanically from the (member)
@@ -32,16 +36,16 @@ export function PortalShell({
         </div>
         <MemberRailNav isAdmin={isAdmin} />
         {process.env.NODE_ENV !== "production" ? (
-          <p className="ui-internal-scaffold mt-auto border-t border-border px-2 pt-2.5 text-[11px] text-ink-muted">
+          <p className="ui-internal-scaffold mt-auto border-t border-border px-2 pt-2.5 text-[0.6875rem] text-ink-muted">
             Member navigation review
             <br />
-            Home · People · Share · Me
+            Home · People · Post · Me
           </p>
         ) : null}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="ui-app-header sticky top-0 z-20 flex min-h-[60px] items-center justify-between gap-3 border-b border-border bg-surface/95 px-4 backdrop-blur lg:px-6">
+        <CollapsibleMobileHeader className="flex min-h-[60px] items-center justify-between gap-3 border-b border-border bg-surface/95 px-4 backdrop-blur lg:px-6">
           {/* The desktop rail already carries the full lockup. */}
           <BrandLockup href="/" className="lg:hidden" />
           <span aria-hidden="true" className="hidden lg:block" />
@@ -58,9 +62,12 @@ export function PortalShell({
               <NotificationMenuLoader viewer={viewer} />
             </Suspense>
           </div>
-        </header>
+        </CollapsibleMobileHeader>
 
-        <main className="w-full flex-1 px-4 pt-6 pb-10 lg:px-9 lg:pb-14">
+        <main
+          id="main"
+          className="w-full flex-1 px-4 pt-6 pb-10 lg:px-9 lg:pb-14"
+        >
           {children}
         </main>
 
@@ -70,12 +77,25 @@ export function PortalShell({
   );
 }
 
+// The tray shows at least five rows, and one per unread notification up to
+// the cap, so up to 20 unread all fit. Unread rows come first, newest first,
+// then the latest read ones. Rows and count come back in one round trip:
+// fetch the cap, then trim to what the count asks for.
 async function NotificationMenuLoader({ viewer }: { viewer: Viewer }) {
-  const notifications = await listNotifications(viewer, { pageSize: 5 });
+  const notifications = await listNotifications(viewer, {
+    pageSize: NOTIFICATION_TRAY_MAX,
+    unreadFirst: true,
+  });
   const preview = notifications.ok
     ? notifications.data
     : { rows: [], unread: 0 };
-  return <NotificationMenu rows={preview.rows} unread={preview.unread} />;
+  const size = Math.min(NOTIFICATION_TRAY_MAX, Math.max(5, preview.unread));
+  return (
+    <NotificationMenu
+      rows={preview.rows.slice(0, size)}
+      unread={preview.unread}
+    />
+  );
 }
 
 function NotificationMenuPending() {

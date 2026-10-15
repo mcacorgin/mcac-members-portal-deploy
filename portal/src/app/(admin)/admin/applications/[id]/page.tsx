@@ -242,6 +242,12 @@ export default async function ApplicationDetailPage({
                 <dd className="text-ink">{record.profile?.title || "—"}</dd>
               </div>
               <div>
+                <dt className="text-xs text-ink-muted">Profession</dt>
+                <dd className="text-ink">
+                  {record.profile?.profession || "—"}
+                </dd>
+              </div>
+              <div>
                 <dt className="text-xs text-ink-muted">LinkedIn URL</dt>
                 <dd className="truncate text-ink">
                   {linkedinHref ? (
@@ -266,6 +272,12 @@ export default async function ApplicationDetailPage({
                     : "—"}
                 </dd>
               </div>
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-ink-muted">Professional summary</dt>
+                <dd className="whitespace-pre-line text-pretty text-ink">
+                  {record.profile?.bio || "—"}
+                </dd>
+              </div>
             </dl>
           </Card>
 
@@ -276,6 +288,9 @@ export default async function ApplicationDetailPage({
               profile={record.profile}
               allTags={allTags}
               memberTagIds={record.tags.map((t) => t.id)}
+              professionOptions={
+                filters.ok ? filters.data.professions.map((p) => p.label) : []
+              }
             />
           ) : (
             <Card>
@@ -297,6 +312,7 @@ export default async function ApplicationDetailPage({
         <div className="order-first grid gap-4 lg:order-none lg:sticky lg:top-4">
           <DecisionPanel
             userId={record.id}
+            applicantName={record.name || "Unnamed applicant"}
             status={record.status}
             acceptedCurrent={record.consent.acceptedCurrent}
             evidence={evidence}

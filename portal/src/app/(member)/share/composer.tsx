@@ -3,6 +3,7 @@
 import {
   startTransition,
   useActionState,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
@@ -28,10 +29,17 @@ import {
 import { TYPE_LABELS, formatBytes } from "../posts/display";
 import { publishShareAction, searchMembersAction } from "./actions";
 import { SHARE_IDLE, type MemberOption, type ShareFormState } from "./form-state";
+import {
+  CHOOSE_TYPE_CUE,
+  CONFIDENTIAL_ATTACHMENT_NOTE,
+  TYPE_PURPOSES,
+} from "./copy";
+import { draftFromForm, draftText, type TypeDrafts } from "./type-drafts";
 
 // SHARE-01 composer: neutral type choice, per-type fields, member tagging,
 // optional attachment. Submits through publishShareAction (createPost first,
-// then saveAttachment, then redirect to the new post).
+// then saveAttachment, then redirect to the new post). Switching type keeps
+// each type's details in a draft (see type-drafts.ts).
 
 export type ComposerProps = {
   enabledTypes: PostTypeName[];
@@ -93,7 +101,9 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
     publishShareAction,
     SHARE_IDLE,
   );
+  const formRef = useRef<HTMLFormElement>(null);
   const [type, setType] = useState<PostTypeName | "">("");
+  const [drafts, setDrafts] = useState<TypeDrafts>({});
   const [body, setBody] = useState("");
   const [tagged, setTagged] = useState<MemberOption[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -122,17 +132,33 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
     startTransition(() => dispatch(formData));
   }
 
+  function chooseType(next: PostTypeName) {
+    if (next === type) return;
+    const form = formRef.current;
+    if (type && form) {
+      const draft = draftFromForm(type, new FormData(form));
+      setDrafts((current) => ({ ...current, [type]: draft }));
+    }
+    setClientFieldErrors({});
+    setType(next);
+  }
+
   const attachmentError = fileError ?? errFor("attachment");
+  const opportunityDraft = drafts.opportunity;
+  const jobDraft = drafts.job;
+  const knowledgeDraft = drafts.knowledge;
+  const eventDraft = drafts.event;
 
   return (
     <form
+      ref={formRef}
       onSubmit={onSubmit}
       className="grid gap-5"
       aria-busy={pending}
       noValidate
     >
       <fieldset className="grid gap-2">
-        <legend className="mb-1.5 block text-[13px] font-medium text-ink">
+        <legend className="mb-1.5 block text-[0.8125rem] font-medium text-ink">
           What are you sharing?
         </legend>
         <div className="flex flex-wrap gap-2">
@@ -141,10 +167,11 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
               key={t}
               type="button"
               aria-pressed={type === t}
-              onClick={() => setType(t)}
+              aria-describedby={`share-type-purpose-${t}`}
+              onClick={() => chooseType(t)}
               disabled={pending}
               className={cx(
-                "inline-flex min-h-tap cursor-pointer items-center rounded-full border px-3.5 text-sm font-medium transition-colors",
+                "inline-flex min-h-tap cursor-pointer items-center rounded-full border px-3.5 text-sm font-medium transition-[color,background-color,border-color,scale] duration-150 ease-out-strong active:scale-[0.96]",
                 type === t
                   ? "border-navy bg-navy text-white"
                   : "border-border-strong bg-surface text-ink-secondary hover:bg-surface-subtle",
@@ -154,15 +181,30 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
             </button>
           ))}
         </div>
-        <small className="text-xs text-ink-muted">
-          Select a type to see the right fields.
-        </small>
+        {/* Every chip is described by its own purpose line, so a screen
+            reader hears what a type is for before choosing it. Only the
+            chosen type's line is shown. */}
+        {enabledTypes.map((t) => (
+          <p
+            key={t}
+            id={`share-type-purpose-${t}`}
+            hidden={type !== t}
+            className="text-sm text-ink-secondary"
+          >
+            {TYPE_PURPOSES[t]}
+          </p>
+        ))}
+        {type ? null : (
+          <p id="share-type-cue" className="text-sm text-ink-secondary">
+            {CHOOSE_TYPE_CUE}
+          </p>
+        )}
         <FieldError>{errFor("type")}</FieldError>
         {type ? <input type="hidden" name="type" value={type} /> : null}
       </fieldset>
 
       {type ? (
-        <>
+        <div className="ui-decision-reveal grid gap-5">
           <FormField
             label="Title (required)"
             htmlFor="share-title"
@@ -182,6 +224,7 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
             <OpportunityFields
               disabled={pending}
               fieldErrors={fieldErrors}
+              metadata={opportunityDraft}
               prefix="share"
             />
           ) : null}
@@ -197,6 +240,7 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
                   id="share-starts-at"
                   name="startsAt"
                   type="datetime-local"
+                  defaultValue={draftText(eventDraft, "startsAt")}
                   disabled={pending}
                   aria-invalid={
                     errFor("metadata.startsAt") ? "true" : undefined
@@ -216,6 +260,7 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
                 <Input
                   id="share-location"
                   name="location"
+                  defaultValue={draftText(eventDraft, "location")}
                   disabled={pending}
                   aria-invalid={
                     errFor("metadata.location") ? "true" : undefined
@@ -232,7 +277,12 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
                 htmlFor="share-mode"
                 error={errFor("metadata.mode")}
               >
-                <Select id="share-mode" name="mode" disabled={pending}>
+                <Select
+                  id="share-mode"
+                  name="mode"
+                  defaultValue={draftText(eventDraft, "mode") || "in_person"}
+                  disabled={pending}
+                >
                   <option value="in_person">In person</option>
                   <option value="virtual">Virtual</option>
                 </Select>
@@ -249,6 +299,7 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
               <Input
                 id="share-location"
                 name="location"
+                defaultValue={draftText(jobDraft, "location")}
                 disabled={pending}
                 aria-invalid={errFor("metadata.location") ? "true" : undefined}
                 aria-describedby={
@@ -269,6 +320,7 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
               <Input
                 id="share-industry"
                 name="industry"
+                defaultValue={draftText(jobDraft, "industry")}
                 disabled={pending}
                 aria-invalid={errFor("metadata.industry") ? "true" : undefined}
                 aria-describedby={
@@ -282,14 +334,14 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
 
           {type === "opportunity" ? (
             <FormField
-              label="Your role in the opportunity (required)"
+              label="Your role in the business opportunity (required)"
               htmlFor="share-opportunity-role"
               error={errFor("metadata.roleInOpportunity")}
             >
               <Select
                 id="share-opportunity-role"
                 name="roleInOpportunity"
-                defaultValue=""
+                defaultValue={draftText(opportunityDraft, "roleInOpportunity")}
                 required
                 disabled={pending}
                 aria-invalid={
@@ -322,6 +374,7 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
               <Input
                 id="share-category"
                 name="category"
+                defaultValue={draftText(knowledgeDraft, "category")}
                 disabled={pending}
                 aria-invalid={errFor("metadata.category") ? "true" : undefined}
                 aria-describedby={
@@ -392,7 +445,16 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
           <FormField
             label="Attachment (optional)"
             htmlFor="share-attachment"
-            hint={`PDF, PNG, JPEG, WebP, XLSX, or DOCX · up to ${formatBytes(maxBytes)}.`}
+            hint={
+              <span id="share-attachment-hint">
+                {`PDF, PNG, JPEG, WebP, XLSX, or DOCX · up to ${formatBytes(maxBytes)}.`}
+                {type === "opportunity" ? (
+                  <span className="mt-1 block text-ink-secondary">
+                    {CONFIDENTIAL_ATTACHMENT_NOTE}
+                  </span>
+                ) : null}
+              </span>
+            }
             error={attachmentError}
           >
             <input
@@ -403,7 +465,9 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
               disabled={pending}
               aria-invalid={attachmentError ? "true" : undefined}
               aria-describedby={
-                attachmentError ? "share-attachment-error" : undefined
+                attachmentError
+                  ? "share-attachment-error"
+                  : "share-attachment-hint"
               }
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -416,15 +480,11 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
                 }
                 setFileError(null);
               }}
-              className="block w-full min-h-tap cursor-pointer rounded-control border border-border-strong bg-surface px-3 py-2.5 text-sm text-ink file:mr-3 file:cursor-pointer file:rounded-control file:border-0 file:bg-surface-subtle file:px-3 file:py-1.5 file:font-medium"
+              className="block w-full min-h-tap cursor-pointer rounded-control border border-border-input bg-surface px-3 py-2.5 text-sm text-ink file:mr-3 file:cursor-pointer file:rounded-control file:border-0 file:bg-surface-subtle file:px-3 file:py-1.5 file:font-medium"
             />
           </FormField>
-        </>
-      ) : (
-        <p className="rounded-container border border-border bg-surface px-4 py-5 text-sm text-ink-secondary">
-          Choose what you want to share to continue.
-        </p>
-      )}
+        </div>
+      ) : null}
 
       {state.status === "error" ? (
         <p role="alert" className="text-sm font-medium text-danger">
@@ -447,7 +507,12 @@ export function Composer({ enabledTypes, acceptMimes, maxBytes }: ComposerProps)
       ) : null}
 
       <div>
-        <Button type="submit" disabled={pending || !type} size="lg">
+        <Button
+          type="submit"
+          disabled={pending || !type}
+          aria-describedby={type ? undefined : "share-type-cue"}
+          size="lg"
+        >
           {pending ? "Publishing…" : "Publish"}
         </Button>
       </div>

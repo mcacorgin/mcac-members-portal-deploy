@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { BrandLockup, BrandMark, Button } from "@/components/ui";
+import { BrandMark, Button } from "@/components/ui";
+import {
+  PublicFooter,
+  PublicHeader,
+  PublicNav,
+  publicShell as shell,
+} from "./public-chrome";
 
 /**
  * Public landing page (signed-out view of "/").
@@ -22,7 +28,7 @@ const directory = {
 
 const inside = [
   {
-    title: "Opportunities",
+    title: "Business Opportunities",
     body: "Post work you need help with. Reply to the ones you can take on.",
   },
   {
@@ -54,7 +60,6 @@ const steps = [
   },
 ];
 
-const shell = "mx-auto w-full max-w-6xl px-5 sm:px-8";
 // gap-px over a border-coloured grid draws every rule exactly once, so the
 // plate never doubles a line at a row or column join.
 const cell = "px-6 py-7";
@@ -62,22 +67,9 @@ const cell = "px-6 py-7";
 export function LandingPage() {
   return (
     <>
-      <header className="border-b border-border bg-surface">
-        <div className={`${shell} flex h-16 items-center justify-between gap-4`}>
-          <BrandLockup />
-          <nav aria-label="Primary" className="flex items-center gap-4 sm:gap-6">
-            <Link
-              href="/register"
-              className="hidden text-sm font-medium text-navy-text underline decoration-border-strong underline-offset-4 transition-colors duration-150 ease-out-strong hover:decoration-navy-text sm:inline"
-            >
-              Apply for membership
-            </Link>
-            <Button href="/sign-in" size="sm">
-              Sign in
-            </Button>
-          </nav>
-        </div>
-      </header>
+      <PublicHeader>
+        <PublicNav />
+      </PublicHeader>
 
       <main id="main" className="flex-1">
         {/* Hero. Typography carries it; the only visual is the real mark. */}
@@ -100,7 +92,7 @@ export function LandingPage() {
                 <br />
                 Reach them directly.
               </h1>
-              <p className="mt-6 max-w-[34rem] text-[17px] leading-relaxed text-ink-secondary">
+              <p className="mt-6 max-w-[34rem] text-[1.0625rem] leading-relaxed text-ink-secondary">
                 A private network of Marathi corporate professionals. Approved
                 members find each other and make contact directly.
               </p>
@@ -128,7 +120,7 @@ export function LandingPage() {
           >
             What members get
           </h2>
-          <p className="mt-3 max-w-[38rem] text-[16px] leading-relaxed text-ink-secondary">
+          <p className="mt-3 max-w-[38rem] text-[1rem] leading-relaxed text-ink-secondary">
             All of it sits behind sign-in, visible only to approved members.
           </p>
 
@@ -137,7 +129,7 @@ export function LandingPage() {
               <h3 className="text-lg font-semibold text-ink">
                 {directory.title}
               </h3>
-              <p className="mt-2 max-w-[36rem] text-[15px] leading-relaxed text-ink-secondary">
+              <p className="mt-2 max-w-[36rem] text-[0.9375rem] leading-relaxed text-ink-secondary">
                 {directory.body}
               </p>
             </div>
@@ -146,7 +138,7 @@ export function LandingPage() {
                 <h3 className="text-base font-semibold text-ink">
                   {item.title}
                 </h3>
-                <p className="mt-2 text-[15px] leading-relaxed text-ink-secondary">
+                <p className="mt-2 text-[0.9375rem] leading-relaxed text-ink-secondary">
                   {item.body}
                 </p>
               </div>
@@ -175,7 +167,7 @@ export function LandingPage() {
                   <h3 className="text-base font-semibold text-ink">
                     {step.title}
                   </h3>
-                  <p className="mt-1.5 max-w-[34rem] text-[15px] leading-relaxed text-ink-secondary">
+                  <p className="mt-1.5 max-w-[34rem] text-[0.9375rem] leading-relaxed text-ink-secondary">
                     {step.body}
                   </p>
                 </li>
@@ -197,7 +189,7 @@ export function LandingPage() {
                 Every application is reviewed, and contact details stay under
                 each member&apos;s control.
               </h2>
-              <p className="mt-4 max-w-[32rem] text-[16px] leading-relaxed text-white/75">
+              <p className="mt-4 max-w-[32rem] text-[1rem] leading-relaxed text-white/75">
                 The network is not public. You choose what other members can
                 see.
               </p>
@@ -217,24 +209,7 @@ export function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t border-border bg-surface">
-        <div
-          className={`${shell} flex flex-col gap-6 py-8 sm:flex-row sm:items-center sm:justify-between`}
-        >
-          <BrandLockup />
-          <nav
-            aria-label="Footer"
-            className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm"
-          >
-            <Link href="/sign-in" className="font-medium text-navy-text">
-              Sign in
-            </Link>
-            <Link href="/register" className="font-medium text-navy-text">
-              Apply for membership
-            </Link>
-          </nav>
-        </div>
-      </footer>
+      <PublicFooter />
     </>
   );
 }

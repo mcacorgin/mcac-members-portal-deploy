@@ -27,6 +27,10 @@ import {
 } from "@/components/inline-member-mention-textarea";
 import { relativeTime } from "../display";
 import {
+  renderLinkTokens,
+  tokenizeUrls,
+} from "@/components/linkified-text";
+import {
   addCommentAction,
   deleteOwnCommentAction,
   editOwnCommentAction,
@@ -52,8 +56,9 @@ function escapeRegex(value: string): string {
 }
 
 function CommentBody({ comment }: { comment: CommentNode }) {
-  if (!comment.body || comment.mentionedMembers.length === 0) {
-    return <>{comment.body}</>;
+  const body = comment.body ?? "";
+  if (!body || comment.mentionedMembers.length === 0) {
+    return <>{renderLinkTokens(tokenizeUrls(body))}</>;
   }
 
   const members = [...comment.mentionedMembers].sort(
@@ -66,18 +71,32 @@ function CommentBody({ comment }: { comment: CommentNode }) {
     `(${members.map((member) => escapeRegex(`@${member.name}`)).join("|")})`,
     "g",
   );
-  const parts: ReactNode[] = comment.body.split(pattern).map((part, index) => {
-    const member = memberByToken.get(part);
-    return member ? (
-      <Link
-        key={`${member.id}-${index}`}
-        href={`/people/${member.id}`}
-        className="rounded-control font-medium text-navy-text hover:underline"
-      >
-        {part}
-      </Link>
-    ) : (
-      part
+  // Tokenize URLs first: a mention token inside a URL
+  // (e.g. https://example.com/@name) must not fracture the link.
+  // Mention links apply only to plain-text tokens.
+  const parts: ReactNode[] = tokenizeUrls(body).map((token, tokenIndex) => {
+    if (token.type === "link") {
+      return (
+        <span key={`url-${tokenIndex}`}>{renderLinkTokens([token])}</span>
+      );
+    }
+    return (
+      <span key={`text-${tokenIndex}`}>
+        {token.text.split(pattern).map((part, index) => {
+          const member = memberByToken.get(part);
+          return member ? (
+            <Link
+              key={`${member.id}-${tokenIndex}-${index}`}
+              href={`/people/${member.id}`}
+              className="rounded-control font-medium text-navy-text hover:underline"
+            >
+              {part}
+            </Link>
+          ) : (
+            part
+          );
+        })}
+      </span>
     );
   });
   return <>{parts}</>;
@@ -180,7 +199,7 @@ function CommentForm({
       <FieldError id={`${id}-error`}>{error}</FieldError>
       <div className="flex items-center gap-2">
         <Button type="submit" disabled={pending}>
-          {pending ? "Posting..." : submitLabel}
+          {pending ? "Posting…" : submitLabel}
         </Button>
         {onCancel ? (
           <Button
@@ -263,7 +282,7 @@ function EditCommentForm({
       <FieldError id={`${id}-error`}>{error}</FieldError>
       <div className="flex items-center gap-2">
         <Button type="submit" size="sm" disabled={pending}>
-          {pending ? "Saving..." : "Save"}
+          {pending ? "Saving…" : "Save"}
         </Button>
         <Button
           type="button"
@@ -326,7 +345,7 @@ function DeleteOwnButton({ commentId, postId }: DeleteOwnButtonProps) {
           })
         }
       >
-        {pending ? "Deleting..." : "Confirm delete"}
+        {pending ? "Deleting…" : "Confirm delete"}
       </Button>
       <Button
         type="button"
@@ -516,14 +535,13 @@ export function CommentsSection({
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold text-ink">Discussion</h2>
         <span className="text-sm text-ink-muted">
-          {count === 1 ? "1 comment" : `${count} comments`} · replies stop at
-          one level
+          {count === 1 ? "1 comment" : `${count} comments`}
         </span>
       </div>
 
       {comments.length === 0 ? (
         <p className="text-sm text-ink-secondary">
-          No comments yet. Start a focused discussion with the poster.
+          No comments yet. Ask a question or add what you know.
         </p>
       ) : (
         <div className="grid gap-4">

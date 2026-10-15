@@ -43,7 +43,7 @@ export function ConnectLinkedInForm() {
       </FormField>
       <div>
         <Button type="submit" variant="secondary" disabled={pending}>
-          {pending ? "Connecting..." : "Connect LinkedIn"}
+          {pending ? "Connecting…" : "Connect LinkedIn"}
         </Button>
       </div>
     </form>

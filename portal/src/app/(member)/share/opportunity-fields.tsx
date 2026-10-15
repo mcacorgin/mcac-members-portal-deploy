@@ -67,7 +67,7 @@ export function OpportunityFields({
   return (
     <>
       <FormField
-        label="Opportunity type (required)"
+        label="Business opportunity type (required)"
         htmlFor={`${prefix}-mandate-type`}
         error={errFor("mandateType")}
       >
@@ -75,13 +75,22 @@ export function OpportunityFields({
           id={`${prefix}-mandate-type`}
           name="mandateType"
           value={mandateType}
+          required
           disabled={disabled}
           onChange={(event) =>
             setMandateType(event.target.value as OpportunityMandateType | "")
           }
           aria-invalid={errFor("mandateType") ? "true" : undefined}
+          aria-describedby={
+            errFor("mandateType") ? `${prefix}-mandate-type-error` : undefined
+          }
         >
-          <option value="">Choose a mandate type</option>
+          {/* Disabled like the role placeholder: shown until a choice is
+              made, but never a choice itself. A disabled selected option is
+              left out of the form data, so the schema still asks for one. */}
+          <option value="" disabled>
+            Choose a mandate type
+          </option>
           {OPPORTUNITY_MANDATE_TYPES.map((type) => (
             <option key={type} value={type}>
               {MANDATE_TYPE_LABELS[type]}
@@ -104,6 +113,9 @@ export function OpportunityFields({
               defaultValue={str(metadata, "industry")}
               disabled={disabled}
               aria-invalid={errFor("industry") ? "true" : undefined}
+              aria-describedby={
+                errFor("industry") ? `${prefix}-industry-error` : undefined
+              }
             />
           </FormField>
 
@@ -119,6 +131,9 @@ export function OpportunityFields({
               defaultValue={str(metadata, "specialization")}
               disabled={disabled}
               aria-invalid={errFor("specialization") ? "true" : undefined}
+              aria-describedby={
+                errFor("specialization") ? `${prefix}-specialization-error` : undefined
+              }
             />
           </FormField>
 
@@ -133,6 +148,9 @@ export function OpportunityFields({
               defaultValue={str(metadata, "geography")}
               disabled={disabled}
               aria-invalid={errFor("geography") ? "true" : undefined}
+              aria-describedby={
+                errFor("geography") ? `${prefix}-geography-error` : undefined
+              }
             />
           </FormField>
 
@@ -145,10 +163,16 @@ export function OpportunityFields({
               id={`${prefix}-mandate-basis`}
               name="mandateBasis"
               defaultValue={str(metadata, "mandateBasis")}
+              required
               disabled={disabled}
               aria-invalid={errFor("mandateBasis") ? "true" : undefined}
+              aria-describedby={
+                errFor("mandateBasis") ? `${prefix}-mandate-basis-error` : undefined
+              }
             >
-              <option value="">Choose mandate basis</option>
+              <option value="" disabled>
+                Choose mandate basis
+              </option>
               {MANDATE_BASIS_VALUES.map((basis) => (
                 <option key={basis} value={basis}>
                   {MANDATE_BASIS_LABELS[basis]}
@@ -169,11 +193,14 @@ export function OpportunityFields({
               defaultValue={str(metadata, "mandateStartDate")}
               disabled={disabled}
               aria-invalid={errFor("mandateStartDate") ? "true" : undefined}
+              aria-describedby={
+                errFor("mandateStartDate") ? `${prefix}-mandate-start-date-error` : undefined
+              }
             />
           </FormField>
 
           <fieldset className="grid gap-1.5">
-            <legend className="text-[13px] font-medium text-ink">
+            <legend className="text-[0.8125rem] font-medium text-ink">
               Materials available (optional)
             </legend>
             <div className="divide-y divide-border rounded-container border border-border px-3">
@@ -192,7 +219,7 @@ export function OpportunityFields({
           </fieldset>
 
           <fieldset className="grid gap-1.5">
-            <legend className="text-[13px] font-medium text-ink">
+            <legend className="text-[0.8125rem] font-medium text-ink">
               {mandateType === "sell_side"
                 ? "Transaction structure (required)"
                 : "Acceptable structures (required)"}
@@ -227,6 +254,9 @@ export function OpportunityFields({
                 defaultValue={number(metadata, "amountMin")}
                 disabled={disabled}
                 aria-invalid={errFor("amountMin") ? "true" : undefined}
+                aria-describedby={
+                  errFor("amountMin") ? `${prefix}-amount-min-error` : undefined
+                }
               />
             </FormField>
             <FormField
@@ -243,6 +273,9 @@ export function OpportunityFields({
                 defaultValue={number(metadata, "amountMax")}
                 disabled={disabled}
                 aria-invalid={errFor("amountMax") ? "true" : undefined}
+                aria-describedby={
+                  errFor("amountMax") ? `${prefix}-amount-max-error` : undefined
+                }
               />
             </FormField>
             <FormField
@@ -256,6 +289,9 @@ export function OpportunityFields({
                 defaultValue={str(metadata, "currency") || "INR"}
                 disabled={disabled}
                 aria-invalid={errFor("currency") ? "true" : undefined}
+                aria-describedby={
+                  errFor("currency") ? `${prefix}-currency-error` : undefined
+                }
               >
                 {CURRENCY_VALUES.map((currency) => (
                   <option key={currency} value={currency}>
@@ -279,6 +315,9 @@ export function OpportunityFields({
                   defaultValue={str(metadata, "businessLocation")}
                   disabled={disabled}
                   aria-invalid={errFor("businessLocation") ? "true" : undefined}
+                  aria-describedby={
+                    errFor("businessLocation") ? `${prefix}-business-location-error` : undefined
+                  }
                 />
               </FormField>
               <div className="grid gap-4 sm:grid-cols-3">
@@ -308,6 +347,9 @@ export function OpportunityFields({
                   defaultValue={str(metadata, "targetCriteria")}
                   disabled={disabled}
                   aria-invalid={errFor("targetCriteria") ? "true" : undefined}
+                  aria-describedby={
+                    errFor("targetCriteria") ? `${prefix}-target-criteria-error` : undefined
+                  }
                 />
               </FormField>
               <Checkbox
@@ -331,6 +373,9 @@ export function OpportunityFields({
               defaultValue={str(metadata, "requestedAction")}
               disabled={disabled}
               aria-invalid={errFor("requestedAction") ? "true" : undefined}
+              aria-describedby={
+                errFor("requestedAction") ? `${prefix}-requested-action-error` : undefined
+              }
             />
           </FormField>
 

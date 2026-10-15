@@ -46,7 +46,7 @@ export function AdminRetentionControl({
           }
         >
           {pending
-            ? "Saving..."
+            ? "Saving…"
             : exempt
               ? "Return to 60-day retention"
               : "Keep attachments beyond 60 days"}

@@ -57,11 +57,13 @@ function PendingLabel({ children }: { children: string }) {
 
 export function DecisionPanel({
   userId,
+  applicantName,
   status,
   acceptedCurrent,
   evidence,
 }: {
   userId: string;
+  applicantName: string;
   status: Status;
   acceptedCurrent: boolean;
   evidence: { complete: boolean; missing: string[] };
@@ -127,8 +129,11 @@ export function DecisionPanel({
   return (
     <Card data-testid="decision-panel" aria-busy={pending}>
       <h3 className="mb-1 text-base font-semibold text-ink">Decision</h3>
+      <p className="mb-1 text-sm text-ink-secondary">
+        Applicant: <strong className="font-semibold text-ink">{applicantName}</strong>
+      </p>
       <p className="mb-3 text-sm text-ink-secondary">
-        Every decision is recorded in the audit log with your name.
+        MCAC keeps a record of every decision and who made it.
       </p>
 
       {(consentBlocked || (canApprove && evidenceBlocked)) &&
@@ -139,14 +144,14 @@ export function DecisionPanel({
         >
           {consentBlocked ? (
             <p className="text-sm font-medium text-warning">
-              Privacy audit incomplete - approval is disabled until the
-              applicant accepts the current privacy notice.
+              You can&apos;t approve yet. The applicant has not accepted the
+              privacy notice.
             </p>
           ) : null}
           {canApprove && evidenceBlocked ? (
             <p className="text-sm font-medium text-warning">
-              Application evidence incomplete - approval is disabled until the
-              applicant provides: {evidence.missing.join(", ")}.
+              You can&apos;t approve yet. The applicant still needs to add:{" "}
+              {evidence.missing.join(", ")}.
             </p>
           ) : null}
         </div>

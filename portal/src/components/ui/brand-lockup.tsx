@@ -62,10 +62,10 @@ export function BrandLockup({
       <BrandMark className="h-9 w-auto flex-none" />
       {!markOnly ? (
         <span className="min-w-0">
-          <strong className="block truncate text-[14.5px] font-semibold text-ink">
+          <strong className="block truncate text-[0.90625rem] font-semibold text-ink">
             MCAC
           </strong>
-          <span className="block text-[11.5px] leading-tight text-ink-muted">
+          <span className="block text-[0.71875rem] leading-tight text-ink-muted">
             Marathi Corporate Advisory Collective
           </span>
         </span>

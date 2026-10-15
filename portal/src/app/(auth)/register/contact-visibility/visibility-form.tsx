@@ -62,7 +62,7 @@ export function VisibilityForm() {
         </FormField>
       ))}
       <Button type="submit" disabled={pending} aria-busy={pending}>
-        {pending ? "Saving choices..." : "Save choices and continue"}
+        {pending ? "Saving choices…" : "Save choices and continue"}
       </Button>
     </form>
   );

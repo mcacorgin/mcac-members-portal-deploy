@@ -9,7 +9,7 @@ import type { PostTypeName } from "@/lib/posts/types";
 // Record<PostTypeName, string> is exhaustive - adding a PostTypeName without
 // updating this map is a compile error, not a silent fallback to the raw key.
 export const SECTION_LABELS: Record<PostTypeName, string> = {
-  opportunity: "Opportunities",
+  opportunity: "Business Opportunities",
   job: "Jobs",
   knowledge: "Knowledge",
   event: "Events",

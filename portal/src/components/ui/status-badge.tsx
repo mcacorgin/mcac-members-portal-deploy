@@ -27,7 +27,7 @@ const statusLabels: Record<Status, string> = {
   "needs-changes": "Needs changes",
   suspended: "Suspended",
   active: "Active",
-  old: "Old",
+  old: "Expired",
 };
 
 export type StatusBadgeProps = ComponentPropsWithRef<"span"> & {

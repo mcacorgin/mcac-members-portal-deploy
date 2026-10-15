@@ -221,6 +221,10 @@ export const profiles = pgTable("profiles", {
   phone: text("phone").notNull().default(""),
   company: text("company").notNull().default(""),
   title: text("title").notNull().default(""),
+  // A dedicated free-text field for word search on the People page (Sandeep,
+  // 21 Sep 2026): a standardized-style title such as "Chartered Accountant"
+  // or "M&A Advisor", separate from the expertise tags and from title/bio.
+  profession: text("profession").notNull().default(""),
   bio: text("bio").notNull().default(""),
   linkedinUrl: text("linkedin_url").notNull().default(""),
   phoneVisibility: fieldVisibility("phone_visibility")

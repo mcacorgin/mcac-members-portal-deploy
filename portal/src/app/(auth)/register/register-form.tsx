@@ -53,7 +53,7 @@ export function RegisterForm() {
           }
         />
         {duplicate ? (
-          <p id="email-error" className="text-[13px] font-medium text-danger">
+          <p id="email-error" className="text-[0.8125rem] font-medium text-danger">
             An account already exists for this email.{" "}
             <Link
               href="/sign-in"
