@@ -4,6 +4,7 @@ import { db, tables } from "@/db";
 import { requireViewer } from "@/lib/auth";
 import { getApplicationState } from "@/lib/account/registration";
 import { resolveLandingPath } from "@/lib/account/routing";
+import { getKnownProfessions } from "@/lib/directory/queries";
 import { groupExpertiseTags } from "@/lib/expertise-groups";
 import { Card, ErrorState, PageHeader, ScreenId } from "@/components/ui";
 import { EvidenceForm } from "./evidence-form";
@@ -34,20 +35,24 @@ export default async function EvidencePage() {
   // Not getDirectoryFilters: it gates on approved member access, which a
   // pending or needs_changes applicant never has. Expertise tags are public
   // to any authenticated applicant filling out this form.
-  const [user, profile, myTagRows, tags, state] = await Promise.all([
-    db.query.users.findFirst({
-      where: eq(tables.users.id, viewer.id),
-      columns: { name: true, email: true, image: true },
-    }),
-    db.query.profiles.findFirst({
-      where: eq(tables.profiles.userId, viewer.id),
-    }),
-    db.query.memberTags.findMany({
-      where: eq(tables.memberTags.userId, viewer.id),
-    }),
-    db.query.expertiseTags.findMany({ orderBy: asc(tables.expertiseTags.label) }),
-    getApplicationState(viewer),
-  ]);
+  const [user, profile, myTagRows, tags, state, knownProfessions] =
+    await Promise.all([
+      db.query.users.findFirst({
+        where: eq(tables.users.id, viewer.id),
+        columns: { name: true, email: true, image: true },
+      }),
+      db.query.profiles.findFirst({
+        where: eq(tables.profiles.userId, viewer.id),
+      }),
+      db.query.memberTags.findMany({
+        where: eq(tables.memberTags.userId, viewer.id),
+      }),
+      db.query.expertiseTags.findMany({
+        orderBy: asc(tables.expertiseTags.label),
+      }),
+      getApplicationState(viewer),
+      getKnownProfessions(),
+    ]);
   const { professions, verticals } = groupExpertiseTags(tags);
 
   return (
@@ -73,12 +78,14 @@ export default async function EvidencePage() {
           <EvidenceForm
             professionTags={professions}
             verticalTags={verticals}
+            professionOptions={knownProfessions.map((p) => p.label)}
             defaults={{
               name: user.name,
               city: profile?.city,
               phone: profile?.phone,
               company: profile?.company,
               title: profile?.title,
+              profession: profile?.profession,
               bio: profile?.bio,
               linkedinUrl: profile?.linkedinUrl,
               tagIds: myTagRows.map((t) => t.tagId),

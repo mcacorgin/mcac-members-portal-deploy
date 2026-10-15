@@ -9,7 +9,10 @@ export default function AuthLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <main className="ui-auth-shell mx-auto flex w-full max-w-md flex-1 flex-col px-4 pb-14 pt-8">
+    <main
+      id="main"
+      className="ui-auth-shell mx-auto flex w-full max-w-md flex-1 flex-col px-4 pb-14 pt-8"
+    >
       <div className="mb-7">
         <BrandLockup href="/" />
       </div>

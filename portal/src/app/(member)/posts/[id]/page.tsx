@@ -1,9 +1,17 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
 import { hasAdminRole, memberAccessError } from "@/lib/authz";
 import { resolveLandingPath } from "@/lib/account/routing";
 import { getPostDetail } from "@/lib/posts/queries";
+import {
+  calendarEventForPost,
+  eventCalendarPath,
+  googleCalendarUrl,
+  siteOrigin,
+  startsAtInputValue,
+} from "@/lib/posts/calendar";
 import {
   TYPE_CONFIG,
   type PostTypeName,
@@ -26,15 +34,18 @@ import {
   ScreenId,
   StatusBadge,
   Tag,
+  TypeBadge,
 } from "@/components/ui";
+import { CalendarPlusIcon } from "@phosphor-icons/react/dist/ssr/CalendarPlus";
+import { DownloadSimpleIcon } from "@phosphor-icons/react/dist/ssr/DownloadSimple";
 import {
   EVENT_MODE_LABELS,
-  TYPE_LABELS,
   daysLeft,
   editedNote,
   formatBytes,
   formatDate,
   formatDateTime,
+  formatDaysLeft,
   relativeTime,
 } from "../display";
 import { formatMandateAmount } from "../display";
@@ -43,9 +54,12 @@ import { CommentsSection } from "./comments";
 import { AdminRemoveControl } from "./admin-remove";
 import { AdminRetentionControl } from "./admin-retention-control";
 import { EditPostForm } from "./edit-post-form";
+import { LinkifiedText } from "@/components/linkified-text";
 
 // HOME-02 - full post detail with metadata, tagged members, attachments,
 // bookmark, discussion thread, and the admin-only removal control.
+
+export const metadata = { title: "Post · MCAC Members Portal" };
 
 function metadataRows(
   type: PostTypeName,
@@ -73,7 +87,7 @@ function metadataRows(
       if (isMandateOpportunityMetadata(metadata)) {
         const mandateType = str("mandateType") as OpportunityMandateType;
         const basis = str("mandateBasis");
-        rows.push({ label: "Opportunity type", value: MANDATE_TYPE_LABELS[mandateType] });
+        rows.push({ label: "Business opportunity type", value: MANDATE_TYPE_LABELS[mandateType] });
         rows.push({ label: "Industry", value: str("industry") });
         rows.push({ label: "Specialisation", value: str("specialization") });
         rows.push({ label: "Geography", value: str("geography") });
@@ -102,7 +116,7 @@ function metadataRows(
         {
           const role = str("roleInOpportunity") as OpportunityRole | null;
           rows.push({
-            label: "Role in opportunity",
+            label: "Role in business opportunity",
             value: role ? (OPPORTUNITY_ROLE_LABELS[role] ?? role) : null,
           });
         }
@@ -113,7 +127,7 @@ function metadataRows(
       {
         const role = str("roleInOpportunity") as OpportunityRole | null;
         rows.push({
-          label: "Role in opportunity",
+          label: "Role in business opportunity",
           value: role ? (OPPORTUNITY_ROLE_LABELS[role] ?? role) : null,
         });
       }
@@ -144,6 +158,31 @@ function metadataRows(
   return rows.filter((r): r is { label: string; value: string } =>
     Boolean(r.value),
   );
+}
+
+/** This request's own origin, for local runs that leave AUTH_URL unset. */
+async function requestOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? "http";
+  return `${proto}://${host}`;
+}
+
+/** Google and .ics links for an upcoming event; null otherwise. */
+async function calendarLinks(post: {
+  id: string;
+  type: PostTypeName;
+  title: string;
+  status: string;
+  metadata: Record<string, unknown>;
+}): Promise<{ google: string; ics: string } | null> {
+  if (post.type !== "event" || post.status === "removed") return null;
+  const origin =
+    siteOrigin(process.env.AUTH_URL) ?? (await requestOrigin());
+  const event = calendarEventForPost(post, origin);
+  // Past events keep their page but lose the option.
+  if (!event || event.start.getTime() <= Date.now()) return null;
+  return { google: googleCalendarUrl(event), ics: eventCalendarPath(post.id) };
 }
 
 export default async function PostDetailPage({
@@ -205,6 +244,7 @@ export default async function PostDetailPage({
   const capabilities = TYPE_CONFIG[post.type].capabilities;
   const canEdit = viewer!.id === post.author.id || isAdmin;
   const note = editedNote(post);
+  const calendar = await calendarLinks(post);
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -217,26 +257,28 @@ export default async function PostDetailPage({
 
       <article className="grid gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Tag>{TYPE_LABELS[post.type]}</Tag>
+          <TypeBadge type={post.type} size="md" />
           {post.taggedViewer ? (
             <StatusBadge status="pending">Tagged for you</StatusBadge>
           ) : null}
           {post.status === "old" ? (
             <StatusBadge status="old">
               {post.expiresAt
-                ? `Old · expired ${formatDate(post.expiresAt)}`
-                : "Old"}
+                ? `Expired on ${formatDate(post.expiresAt)}`
+                : "Expired"}
             </StatusBadge>
           ) : null}
           {post.status === "removed" ? (
             <StatusBadge status="rejected">Removed</StatusBadge>
           ) : null}
           {remaining !== null ? (
-            <span className="text-xs text-ink-muted">{remaining}d left</span>
+            <span className="text-xs text-ink-muted">
+              {formatDaysLeft(remaining)}
+            </span>
           ) : null}
         </div>
 
-        <h1 className="text-[22px] font-semibold text-balance text-ink">
+        <h1 className="text-[1.375rem] font-semibold text-balance text-ink">
           {post.title}
         </h1>
 
@@ -244,9 +286,15 @@ export default async function PostDetailPage({
           <Avatar
             name={post.author.name}
             src={post.author.image ?? undefined}
+            size="lg"
           />
-          <div>
-            <p className="font-medium text-ink">{post.author.name}</p>
+          <div className="min-w-0">
+            <Link
+              href={`/people/${post.author.id}`}
+              className="block truncate font-medium text-ink hover:text-navy-text hover:underline active:text-navy-text active:underline"
+            >
+              {post.author.name}
+            </Link>
             <p className="text-ink-muted" suppressHydrationWarning>
               {relativeTime(post.createdAt)}
               {note ? ` · ${note}` : ""}
@@ -269,7 +317,7 @@ export default async function PostDetailPage({
         ) : null}
 
         <p className="whitespace-pre-wrap text-pretty text-ink">
-          {post.body}
+          <LinkifiedText text={post.body} />
         </p>
 
         {rows.length > 0 ? (
@@ -292,6 +340,41 @@ export default async function PostDetailPage({
               ))}
             </dl>
           </Card>
+        ) : null}
+
+        {calendar ? (
+          <section
+            id="add-to-calendar"
+            aria-labelledby="add-to-calendar-heading"
+            className="scroll-mt-24"
+          >
+            <h2
+              id="add-to-calendar-heading"
+              className="mb-1.5 text-sm font-semibold text-ink"
+            >
+              Add to calendar
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                href={calendar.google}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="secondary"
+                size="sm"
+              >
+                <CalendarPlusIcon size={18} aria-hidden="true" />
+                Google Calendar
+              </Button>
+              <Button href={calendar.ics} variant="secondary" size="sm">
+                <DownloadSimpleIcon size={18} aria-hidden="true" />
+                Apple or Outlook (.ics file)
+              </Button>
+            </div>
+            <p className="mt-1.5 text-xs text-ink-muted">
+              The entry starts at the time shown, India time, and lasts two
+              hours.
+            </p>
+          </section>
         ) : null}
 
         {post.taggedMembers.length > 0 ? (
@@ -336,13 +419,13 @@ export default async function PostDetailPage({
                     <Link
                       href={`/api/attachments/${attachment.id}`}
                       prefetch={false}
-                      className="flex min-h-tap items-center gap-3 rounded-container border border-border bg-surface px-3.5 py-2.5 hover:bg-surface-subtle"
+                      className="flex min-h-tap items-center gap-3 rounded-container border border-border bg-surface px-3.5 py-2.5 hover:bg-surface-subtle active:bg-surface-subtle"
                     >
                       <span
                         aria-hidden="true"
                         className="grid size-9 flex-none place-items-center rounded-control bg-surface-subtle text-ink-secondary"
                       >
-                        {"⤓"}
+                        <DownloadSimpleIcon size={18} aria-hidden="true" />
                       </span>
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium text-ink">
@@ -367,6 +450,7 @@ export default async function PostDetailPage({
             title={post.title}
             body={post.body}
             metadata={post.metadata}
+            startsAtInputValue={startsAtInputValue(post.metadata)}
           />
         ) : null}
 

@@ -6,8 +6,8 @@ export type EmptyStateProps = {
   body: ReactNode;
   /** Optional call to action (usually a Button). */
   action?: ReactNode;
-  /** Optional single text glyph shown in a small tile (no emoji). */
-  glyph?: string;
+  /** Optional icon shown in a small tile (no emoji). */
+  glyph?: ReactNode;
   className?: string;
 };
 
@@ -29,13 +29,13 @@ export function EmptyState({
       {glyph ? (
         <span
           aria-hidden="true"
-          className="mb-3.5 grid size-12 place-items-center rounded-avatar bg-surface-subtle text-[22px] text-ink-secondary"
+          className="mb-3.5 grid size-12 place-items-center rounded-avatar bg-surface-subtle text-[1.375rem] text-ink-secondary"
         >
           {glyph}
         </span>
       ) : null}
-      <h3 className="mb-1.5 text-base font-semibold text-ink">{title}</h3>
-      <p className="max-w-[44ch] text-ink-secondary">{body}</p>
+      <h2 className="mb-1.5 text-base font-semibold text-ink">{title}</h2>
+      <p className="max-w-[44ch] text-pretty text-ink-secondary">{body}</p>
       {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );

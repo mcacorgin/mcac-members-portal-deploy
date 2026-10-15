@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { BellIcon } from "@phosphor-icons/react/dist/csr/Bell";
+import { CaretRightIcon } from "@phosphor-icons/react/dist/csr/CaretRight";
 import type { NotificationRow } from "@/lib/notifications/queries";
 import { presentNotification } from "@/lib/notifications/presentation";
 import { cx } from "@/components/ui";
 import { relativeTime } from "./format";
-import { markAllRead, openNotification } from "./notifications/actions";
+import {
+  markShownNotificationsRead,
+  openNotification,
+} from "./notifications/actions";
 
 export function NotificationMenu({
   rows,
@@ -17,6 +21,14 @@ export function NotificationMenu({
   unread: number;
 }) {
   const [open, setOpen] = useState(false);
+  // The rows the tray showed when it last opened, and whether more were
+  // unread than it showed. Opening marks its unread rows read; the refresh
+  // that follows drops their unread state and, with fewer unread, trims the
+  // list. The open tray renders this copy, so it stays as it opened.
+  const [shown, setShown] = useState<{
+    rows: NotificationRow[];
+    more: boolean;
+  }>({ rows: [], more: false });
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -52,6 +64,29 @@ export function NotificationMenu({
     };
   }, [open]);
 
+  const newCount = shown.rows.filter((row) => row.readAt === null).length;
+
+  // Runs once per open, from the click that opens the tray: re-renders never
+  // repeat it.
+  function openTray() {
+    const newIds = rows
+      .filter((row) => row.readAt === null)
+      .map((row) => row.id);
+    setShown({ rows, more: unread > newIds.length });
+    setOpen(true);
+    if (newIds.length === 0) return;
+
+    // Mark read by id, only the rows this tray shows: one that lands after
+    // the render, or that the tray has no room for, must stay unread.
+    startTransition(async () => {
+      try {
+        await markShownNotificationsRead(newIds);
+      } catch {
+        // The badge stays as it is; the next open tries again.
+      }
+    });
+  }
+
   return (
     <div ref={rootRef} className="relative">
       <button
@@ -62,14 +97,14 @@ export function NotificationMenu({
         }
         aria-expanded={open}
         aria-controls={open ? "recent-notifications" : undefined}
-        onClick={() => setOpen((current) => !current)}
-        className="relative grid size-tap cursor-pointer place-items-center rounded-control border border-border text-lg text-ink-secondary hover:bg-surface-subtle"
+        onClick={() => (open ? setOpen(false) : openTray())}
+        className="relative grid size-tap cursor-pointer place-items-center rounded-control border border-border text-lg text-ink-secondary transition-[color,background-color,scale] duration-150 ease-out-strong hover:bg-surface-subtle active:scale-[0.96]"
       >
         <BellIcon aria-hidden="true" size={20} weight="regular" />
         {unread > 0 ? (
           <span
             aria-hidden="true"
-            className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full border-2 border-surface bg-danger px-1 text-[10px] font-semibold text-white"
+            className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full border-2 border-surface bg-danger px-1 text-[0.6875rem] font-semibold text-white"
           >
             {unread > 99 ? "99+" : unread}
           </span>
@@ -94,39 +129,35 @@ export function NotificationMenu({
             aria-label="Recent notifications"
             className="ui-notification-menu fixed inset-x-3 top-[72px] z-40 max-h-[min(70vh,520px)] overflow-hidden rounded-container border border-border bg-surface shadow-[0_18px_50px_oklch(0.2_0.03_256/0.16)] sm:absolute sm:inset-auto sm:right-0 sm:top-[calc(100%+0.65rem)] sm:w-[390px]"
           >
-            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-              <div>
-                <h2 className="font-semibold text-ink">Notifications</h2>
-                <p className="text-xs text-ink-muted">
-                  {unread > 0
+            {/* No "Mark all read" here: opening the tray already marks
+                what it shows, and a button that vanished a moment after
+                opening would take keyboard focus with it. /notifications
+                keeps one. */}
+            <div className="border-b border-border px-4 py-3">
+              <h2 className="font-semibold text-ink">Notifications</h2>
+              <p className="text-xs text-ink-muted">
+                {newCount > 0
+                  ? shown.more
+                    ? `${newCount} new, more on the notifications page`
+                    : `${newCount} new`
+                  : unread > 0
                     ? `${unread} unread`
                     : "You are up to date"}
-                </p>
-              </div>
-              {unread > 0 ? (
-                <form action={markAllRead}>
-                  <button
-                    type="submit"
-                    className="min-h-tap cursor-pointer rounded-control px-2 text-sm font-medium text-navy-text hover:bg-surface-subtle"
-                  >
-                    Mark all read
-                  </button>
-                </form>
-              ) : null}
+              </p>
             </div>
 
-            {rows.length > 0 ? (
+            {shown.rows.length > 0 ? (
               <ul className="max-h-[min(52vh,390px)] list-none overflow-y-auto p-0">
-                {rows.map((notification) => {
+                {shown.rows.map((notification) => {
                   const view = presentNotification(notification);
-                  const isUnread = notification.readAt === null;
+                  const isNew = notification.readAt === null;
                   const inner = (
                     <>
                       <span
                         aria-hidden="true"
                         className={cx(
                           "mt-1.5 size-[7px] flex-none rounded-full",
-                          isUnread
+                          isNew
                             ? "bg-navy-text"
                             : "border border-border-strong bg-transparent",
                         )}
@@ -135,12 +166,12 @@ export function NotificationMenu({
                         <strong
                           className={cx(
                             "line-clamp-2 block text-sm leading-snug text-ink",
-                            isUnread ? "font-semibold" : "font-medium",
+                            isNew ? "font-semibold" : "font-medium",
                           )}
                         >
                           {view.title}
-                          {isUnread ? (
-                            <span className="sr-only"> (unread)</span>
+                          {isNew ? (
+                            <span className="sr-only"> (new)</span>
                           ) : null}
                         </strong>
                         <small className="mt-1 block text-xs text-ink-muted">
@@ -166,14 +197,14 @@ export function NotificationMenu({
                         >
                           <button
                             type="submit"
-                            className="flex min-h-[68px] w-full cursor-pointer items-start gap-3 px-4 py-3 text-left hover:bg-surface-subtle"
+                            className="flex min-h-[68px] w-full cursor-pointer items-start gap-3 px-4 py-3 text-left hover:bg-surface-subtle active:bg-surface-subtle focus-visible:outline-offset-[-2px]"
                           >
                             {inner}
                             <span
                               aria-hidden="true"
                               className="mt-1 text-ink-muted"
                             >
-                              ›
+                              <CaretRightIcon size={16} aria-hidden="true" />
                             </span>
                           </button>
                         </form>
@@ -200,7 +231,7 @@ export function NotificationMenu({
             <Link
               href="/notifications"
               onClick={() => setOpen(false)}
-              className="flex min-h-tap items-center justify-center border-t border-border px-4 text-sm font-semibold text-navy-text hover:bg-surface-subtle"
+              className="flex min-h-tap items-center justify-center border-t border-border px-4 text-sm font-semibold text-navy-text hover:bg-surface-subtle active:bg-surface-subtle"
             >
               View all notifications
             </Link>

@@ -45,7 +45,7 @@ export function PreferredContactEmailCard({
         <h3 className="text-base font-semibold text-ink">
           Email for MCAC updates
         </h3>
-        <p className="mt-0.5 text-[13px] text-ink-secondary">
+        <p className="mt-0.5 text-[0.8125rem] text-ink-secondary">
           MCAC sends portal notifications to this address. Changing this does
           not change your sign-in email or LinkedIn connection.
         </p>
@@ -53,7 +53,7 @@ export function PreferredContactEmailCard({
 
       <div className="rounded-control bg-surface-subtle px-3 py-2.5 text-sm text-ink">
         <div className="flex flex-wrap items-center gap-2">
-          <strong>{initial.effectiveEmail}</strong>
+          <strong className="min-w-0">{initial.effectiveEmail}</strong>
           <Tag selected={Boolean(initial.preferredEmail)}>
             {initial.preferredEmail ? "Verified" : "Sign-in email"}
           </Tag>

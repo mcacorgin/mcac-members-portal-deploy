@@ -61,6 +61,14 @@ export function presentNotification(
         typeof payload.status === "string"
           ? payload.status.replace(/_/g, " ")
           : "updated";
+      const title =
+        payload.status === "approved"
+          ? "Welcome to MCAC. Your membership is approved."
+          : payload.status === "needs_changes"
+            ? "MCAC asked for changes to your application"
+            : payload.status === "rejected"
+              ? "Your application was not approved"
+              : `Your account status changed to ${status}`;
       const detail =
         payload.status === "approved" &&
         Array.isArray(payload.enabledSections)
@@ -70,7 +78,7 @@ export function presentNotification(
             : undefined;
       return {
         kind: "Account",
-        title: `Your account status changed to ${status}`,
+        title,
         detail,
         target: "/me",
       };

@@ -1,3 +1,6 @@
+import { CaretRightIcon } from "@phosphor-icons/react/dist/ssr/CaretRight";
+import { CheckIcon } from "@phosphor-icons/react/dist/ssr/Check";
+import { XIcon } from "@phosphor-icons/react/dist/ssr/X";
 import { requireViewer } from "@/lib/auth";
 import {
   listNotifications,
@@ -62,7 +65,7 @@ export default async function NotificationsPage({
       <ScreenId id="HOME-03" className="mb-2" />
       <PageHeader
         title="Notifications"
-        description="Your own tags, mentions, comments, replies, and account updates."
+        description="Tags, mentions, replies and account updates."
         action={
           unread > 0 ? (
             <form action={markAllRead}>
@@ -76,12 +79,12 @@ export default async function NotificationsPage({
 
       {rows.length === 0 && page === 1 ? (
         <EmptyState
-          glyph="✓"
+          glyph={<CheckIcon aria-hidden="true" size={22} />}
           title="No notifications yet"
           body="Tags, mentions, comments, replies, and account updates will appear here."
           action={
             <Button href="/people" variant="secondary">
-              Find People
+              Find people
             </Button>
           }
         />
@@ -115,7 +118,7 @@ export default async function NotificationsPage({
                         <span className="sr-only"> (unread)</span>
                       ) : null}
                     </strong>
-                    <small className="mt-0.5 block text-[13px] text-ink-muted">
+                    <small className="mt-0.5 block text-[0.8125rem] text-ink-muted">
                       {meta}
                       {view.detail ? ` · ${view.detail}` : ""}
                     </small>
@@ -134,12 +137,10 @@ export default async function NotificationsPage({
                     >
                       <button
                         type="submit"
-                        className="flex min-h-[64px] w-full cursor-pointer items-center gap-3 px-3.5 py-3 text-left hover:bg-surface-subtle"
+                        className="flex min-h-[64px] w-full cursor-pointer items-center gap-3 px-3.5 py-3 text-left hover:bg-surface-subtle active:bg-surface-subtle focus-visible:outline-offset-[-2px]"
                       >
                         {inner}
-                        <span aria-hidden="true" className="text-ink-muted">
-                          ›
-                        </span>
+                        <CaretRightIcon aria-hidden="true" size={16} className="text-ink-muted" />
                       </button>
                     </form>
                   ) : (
@@ -156,9 +157,7 @@ export default async function NotificationsPage({
                       aria-label="Dismiss notification"
                       className="flex size-tap cursor-pointer items-center justify-center text-ink-muted hover:bg-surface-subtle hover:text-ink"
                     >
-                      <span aria-hidden="true" className="text-lg leading-none">
-                        ×
-                      </span>
+                      <XIcon aria-hidden="true" size={16} />
                     </button>
                   </form>
                 </li>

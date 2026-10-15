@@ -9,7 +9,7 @@ export function FieldError({ className, children, ...props }: FieldErrorProps) {
   return (
     <p
       {...props}
-      className={cx("text-[13px] font-medium text-danger", className)}
+      className={cx("text-[0.8125rem] font-medium text-danger", className)}
     >
       {children}
     </p>

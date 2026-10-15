@@ -7,7 +7,7 @@ export function Label({ className, ...props }: LabelProps) {
   return (
     <label
       {...props}
-      className={cx("block text-[13px] font-medium text-ink", className)}
+      className={cx("block text-[0.8125rem] font-medium text-ink", className)}
     />
   );
 }

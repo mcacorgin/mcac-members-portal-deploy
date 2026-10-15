@@ -23,6 +23,7 @@ import {
   recordFailure,
 } from "@/lib/auth-rate-limit";
 import { err, ok, type ActionResult } from "@/lib/contracts/result";
+import { DEFAULT_COUNTRY_CODE, toE164 } from "@/lib/phone";
 
 // HOME-04 server actions. Profile editing reuses submitApplicationEvidence
 // and visibility editing reuses updateContactVisibility - the same
@@ -39,9 +40,13 @@ export async function saveProfile(
   const res = await submitApplicationEvidence(viewer, {
     name: String(formData.get("name") ?? ""),
     city: String(formData.get("city") ?? ""),
-    phone: String(formData.get("phone") ?? ""),
+    phone: toE164(
+      String(formData.get("countryCode") ?? DEFAULT_COUNTRY_CODE),
+      String(formData.get("phone") ?? ""),
+    ),
     company: String(formData.get("company") ?? ""),
     title: String(formData.get("title") ?? ""),
+    profession: String(formData.get("profession") ?? ""),
     bio: String(formData.get("bio") ?? ""),
     linkedinUrl: String(formData.get("linkedinUrl") ?? ""),
     tagIds: formData.getAll("tagIds").map(String),

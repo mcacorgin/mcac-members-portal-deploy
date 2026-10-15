@@ -6,54 +6,16 @@ import {
   hasCurrentConsent,
 } from "@/lib/account/registration";
 import { resolveLandingPath } from "@/lib/account/routing";
+import { ADMIN_EMAIL } from "@/lib/contact";
 import { Card, ErrorState, PageHeader, ScreenId } from "@/components/ui";
+import { CaretDownIcon } from "@phosphor-icons/react/dist/ssr/CaretDown";
+import {
+  NoticeBody,
+  NoticeStageBadge,
+} from "@/components/privacy/notice-body";
 import { AcceptForm } from "./accept-form";
 
 export const metadata = { title: "Privacy notice - MCAC Members Portal" };
-
-function NoticeBody({ body }: { body: string }) {
-  const blocks = body
-    .split(/\n\s*\n/)
-    .map((block) => block.trim())
-    .filter(Boolean);
-
-  return (
-    <div className="grid gap-4 text-[15px] leading-relaxed text-ink-secondary">
-      {blocks.map((block, index) => {
-        if (index === 0) {
-          return (
-            <h2 key={block} className="text-lg font-semibold text-ink">
-              {block}
-            </h2>
-          );
-        }
-        if (/^(Effective Date|Last Updated):/m.test(block)) {
-          return (
-            <div
-              key={block}
-              className="grid gap-1 rounded-control bg-surface-subtle px-3.5 py-3 text-sm text-ink-secondary sm:grid-cols-2"
-            >
-              {block.split("\n").map((line) => (
-                <span key={line}>{line}</span>
-              ))}
-            </div>
-          );
-        }
-        if (/^\d+\.\s|^Consent and Acceptance$/i.test(block)) {
-          return (
-            <h3
-              key={block}
-              className="border-t border-border pt-4 text-base font-semibold text-ink first:border-0 first:pt-0"
-            >
-              {block}
-            </h3>
-          );
-        }
-        return <p key={`${index}-${block.slice(0, 24)}`}>{block}</p>;
-      })}
-    </div>
-  );
-}
 
 export default async function PrivacyPage() {
   const viewer = await requireViewer();
@@ -65,37 +27,24 @@ export default async function PrivacyPage() {
     getCurrentNotice(),
     getOptionalConsents(viewer),
   ]);
-  const isInterim = Boolean(
-    notice && /INTERIM PRIVACY DISCLOSURE/i.test(notice.body),
-  );
-  const isDraft = Boolean(
-    notice &&
-      /DRAFT|PENDING LEGAL REVIEW|\[[^\]]*CONFIRM[^\]]*\]/i.test(notice.body),
-  );
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-4">
       <PageHeader
         title="Review your privacy choices"
-        description="Start with the short version, open the full notice if you want the detail, then choose what MCAC may do."
+        description="Read the short version, then make your choices. The full notice is below if you want it."
         action={<ScreenId id="AUTH-02" />}
         className="mb-1"
       />
       {!notice ? (
         <ErrorState
           title="Privacy notice unavailable"
-          body="MCAC is finalizing its privacy notice. Acceptance and member registration are disabled, and no acceptance has been recorded. Contact admin@mcac.org.in for more information."
+          body={`MCAC is finalizing its privacy notice. Acceptance and member registration are disabled, and no acceptance has been recorded. Contact ${ADMIN_EMAIL} for more information.`}
         />
       ) : (
         <>
           <Card className="grid gap-5 p-5 sm:p-6">
-            {isInterim || isDraft ? (
-              <span className="inline-flex min-h-6 w-fit items-center rounded-full bg-danger-bg px-2.5 py-0.5 text-xs font-semibold tracking-wide text-danger">
-                {isInterim
-                  ? "INTERIM - FINAL NOTICE PENDING"
-                  : "DRAFT - PENDING LEGAL REVIEW"}
-              </span>
-            ) : null}
+            <NoticeStageBadge body={notice.body} />
 
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -110,32 +59,30 @@ export default async function PrivacyPage() {
                 The short version
               </h2>
               <p className="mt-2 leading-relaxed text-ink-secondary">
-                MCAC uses the professional identity, profile, contact, and
-                application information you provide to evaluate and manage
-                membership, keep the portal secure, and operate the community.
+                MCAC uses the details you give to review your application, run
+                your membership and keep the portal safe.
               </p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-container bg-surface-subtle p-4">
                 <h3 className="text-sm font-semibold text-ink">
-                  Required for membership
+                  Needed for membership
                 </h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                  Reviewing applications, maintaining accounts, operating the
-                  private member directory, protecting the service, and
-                  responding to requests or grievances.
+                  Reviewing your application, running your account and the
+                  member directory, keeping the portal safe, and answering
+                  your requests.
                 </p>
               </div>
-              <div className="rounded-container bg-success-bg p-4">
-                <h3 className="text-sm font-semibold text-success">
-                  Community updates are optional
+              <div className="rounded-container bg-navy-tint p-4">
+                <h3 className="text-sm font-semibold text-navy-text">
+                  What members see
                 </h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                  Approved members appear in the private member directory.
-                  Their professional profile can be found in People and tagged
-                  in posts. Phone, email, and LinkedIn visibility stay separate.
-                  Community updates remain optional.
+                  Once approved, members can find your name and work details
+                  in People and tag you in posts. On the next screen you
+                  choose who sees your phone, email and LinkedIn.
                 </p>
               </div>
             </div>
@@ -153,19 +100,18 @@ export default async function PrivacyPage() {
             </p>
 
             <details className="group rounded-container border border-border bg-surface">
-              <summary className="flex min-h-tap cursor-pointer list-none items-center justify-between gap-4 rounded-container px-4 py-3.5 font-semibold text-ink focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+              <summary className="flex min-h-tap cursor-pointer list-none items-center justify-between gap-4 rounded-container px-4 py-3.5 font-semibold text-ink [&::-webkit-details-marker]:hidden">
                 <span>
                   Read the full privacy notice
                   <span className="mt-0.5 block text-xs font-normal text-ink-muted">
                     The complete approved text and all 12 sections
                   </span>
                 </span>
-                <span
+                <CaretDownIcon
                   aria-hidden="true"
-                  className="text-xl text-ink-muted transition-transform duration-150 ease-out-strong group-open:rotate-180"
-                >
-                  ⌄
-                </span>
+                  size={20}
+                  className="text-ink-muted transition-transform duration-150 ease-out-strong group-open:rotate-180"
+                />
               </summary>
               <div className="border-t border-border px-4 py-5 sm:px-5">
                 <NoticeBody body={notice.body} />
@@ -183,9 +129,8 @@ export default async function PrivacyPage() {
                 Choose what MCAC can do
               </h2>
               <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
-                The first choice is required for membership. Community updates
-                are optional and clearly show what changes when they are on or
-                off.
+                You must tick the first box to apply. The second box is up to
+                you.
               </p>
             </div>
             <AcceptForm version={notice.version} choices={choices} />

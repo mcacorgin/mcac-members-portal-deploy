@@ -11,6 +11,8 @@
 // Never echo a raw code to a person: anything not in this table becomes the
 // generic fallback rather than travelling as attacker-chosen text.
 
+import { ADMIN_EMAIL } from "@/lib/contact";
+
 type LinkErrorCopy = {
   /**
    * What a signed-out visitor sees on /sign-in. Optional: some codes cannot
@@ -24,14 +26,12 @@ type LinkErrorCopy = {
 
 export const LINK_ERRORS = {
   LinkedInEmailRequired: {
-    signIn:
-      "LinkedIn did not share an email address. Confirm your LinkedIn account has a primary email, then try again or contact admin@mcac.org.in.",
+    signIn: `LinkedIn did not share an email address. Confirm your LinkedIn account has a primary email, then try again or contact ${ADMIN_EMAIL}.`,
     me: "LinkedIn did not share an email address. Confirm your LinkedIn primary email, then try again.",
   },
   OAuthAccountNotLinked: {
-    signIn:
-      "This LinkedIn account is already connected to an MCAC account. Contact admin@mcac.org.in if you cannot sign in.",
-    me: "That LinkedIn account is already connected to another member. Contact admin@mcac.org.in if that seems wrong.",
+    signIn: `This LinkedIn account is already connected to an MCAC account. Contact ${ADMIN_EMAIL} if you cannot sign in.`,
+    me: `That LinkedIn account is already connected to another member. Contact ${ADMIN_EMAIL} if that seems wrong.`,
   },
   // AccessDenied only comes from a signIn callback rejection, which for an
   // anonymous visitor cannot happen - so it has no /sign-in copy and falls
@@ -49,8 +49,9 @@ export const LINK_ERRORS = {
 
 export type LinkErrorCode = keyof typeof LINK_ERRORS;
 
-const SIGN_IN_FALLBACK =
-  "Sign-in did not complete. Please try again.";
+// The one message a signed-out visitor sees for every unknown failure, so it
+// carries the only way to reach a person if trying again does not help.
+const SIGN_IN_FALLBACK = `Sign-in did not complete. Please try again, or email ${ADMIN_EMAIL} if it keeps happening.`;
 const ME_FALLBACK = "LinkedIn did not finish connecting. Please try again.";
 
 /** Only these codes may be forwarded into a URL. */

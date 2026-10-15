@@ -16,7 +16,7 @@ export function ScreenId({ id, className }: ScreenIdProps) {
   return (
     <span
       className={cx(
-        "ui-screen-id inline-flex items-center font-mono text-[10.5px] font-medium tracking-[0.04em] text-ink-muted",
+        "ui-screen-id inline-flex items-center font-mono text-[0.65625rem] font-medium tracking-[0.04em] text-ink-muted",
         className,
       )}
     >

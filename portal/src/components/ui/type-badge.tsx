@@ -190,7 +190,7 @@ export function TypeBadge({
       className={cx(
         "inline-flex items-center gap-1.5 rounded-full font-medium whitespace-nowrap",
         size === "md"
-          ? "min-h-7 px-3 py-1 text-[13px]"
+          ? "min-h-7 px-3 py-1 text-[0.8125rem]"
           : "min-h-6 px-2.5 py-0.5 text-xs",
         TYPE_TINT_CLASSES[type],
         className,

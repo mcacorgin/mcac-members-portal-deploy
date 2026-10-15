@@ -32,20 +32,16 @@ export type EditPostFormProps = {
   title: string;
   body: string;
   metadata: Record<string, unknown>;
+  /**
+   * Events only: the start as the page shows it, read on the server
+   * (startsAtInputValue in lib/posts/calendar.ts). "" for other types.
+   */
+  startsAtInputValue: string;
 };
 
 function str(metadata: Record<string, unknown>, key: string): string {
   const v = metadata[key];
   return typeof v === "string" ? v : "";
-}
-
-/** ISO datetime -> value usable in <input type="datetime-local">. */
-function toLocalInputValue(iso: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function text(formData: FormData, name: string): string {
@@ -82,9 +78,10 @@ function buildMetadata(
       return { metadata: category ? { category } : {} };
     }
     case "event": {
-      const raw = text(formData, "startsAt");
-      const parsed = raw ? new Date(raw) : null;
-      if (!parsed || Number.isNaN(parsed.getTime())) {
+      // Sent as typed. editPostAction parses it in the server's zone, as the
+      // composer does; parsing it here would use the browser's zone instead.
+      const startsAt = text(formData, "startsAt");
+      if (!startsAt) {
         return {
           fieldErrors: {
             "metadata.startsAt": ["Enter the event date and time."],
@@ -93,7 +90,7 @@ function buildMetadata(
       }
       return {
         metadata: {
-          startsAt: parsed.toISOString(),
+          startsAt,
           location: text(formData, "location"),
           mode: text(formData, "mode"),
         },
@@ -108,6 +105,7 @@ export function EditPostForm({
   title,
   body,
   metadata,
+  startsAtInputValue,
 }: EditPostFormProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -220,7 +218,7 @@ export function EditPostForm({
                 id="edit-starts-at"
                 name="startsAt"
                 type="datetime-local"
-                defaultValue={toLocalInputValue(str(metadata, "startsAt"))}
+                defaultValue={startsAtInputValue}
                 disabled={pending}
                 aria-invalid={
                   errFor("metadata.startsAt") ? "true" : undefined
@@ -314,7 +312,7 @@ export function EditPostForm({
 
         {type === "opportunity" ? (
           <FormField
-            label="Your role in the opportunity (required)"
+            label="Your role in the business opportunity (required)"
             htmlFor="edit-opportunity-role"
             error={errFor("metadata.roleInOpportunity")}
           >
@@ -422,7 +420,7 @@ export function EditPostForm({
 
         <div className="flex items-center gap-2">
           <Button type="submit" disabled={pending}>
-            {pending ? "Saving..." : "Save changes"}
+            {pending ? "Saving…" : "Save changes"}
           </Button>
           <Button
             type="button"

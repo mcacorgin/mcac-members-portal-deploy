@@ -17,7 +17,7 @@ type ConsentCheckboxProps = Omit<
 
 /**
  * Consent choice with a redundant text + colour state. Optional choices use
- * green only after the member affirmatively selects them.
+ * the success (navy) tint only after the member affirmatively selects them.
  */
 export function ConsentCheckbox({
   label,

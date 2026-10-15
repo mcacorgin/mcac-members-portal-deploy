@@ -8,16 +8,20 @@ import {
 } from "@/lib/account/registration";
 import { resolveLandingPath } from "@/lib/account/routing";
 import { scheduleOutboxDelivery } from "@/lib/notifications/delivery";
+import { DEFAULT_COUNTRY_CODE, toE164 } from "@/lib/phone";
 
 export type EvidenceValues = {
   name: string;
   city: string;
+  /** Raw national-number input, retained for form re-render on failure. */
   phone: string;
+  /** Selected country code, retained for form re-render on failure. */
+  countryCode: string;
   tagIds: string[];
   company: string;
   title: string;
+  profession: string;
   bio: string;
-  linkedinUrl: string;
 };
 
 export type EvidenceState = {
@@ -41,16 +45,22 @@ export async function submitEvidenceAction(
     name: String(formData.get("name") ?? ""),
     city: String(formData.get("city") ?? ""),
     phone: String(formData.get("phone") ?? ""),
+    countryCode: String(formData.get("countryCode") ?? DEFAULT_COUNTRY_CODE),
     tagIds: formData.getAll("tagIds").map(String),
     company: String(formData.get("company") ?? ""),
     title: String(formData.get("title") ?? ""),
+    profession: String(formData.get("profession") ?? ""),
     bio: String(formData.get("bio") ?? ""),
-    linkedinUrl: String(formData.get("linkedinUrl") ?? ""),
   };
 
+  // Store E.164 (issue #82); the schema validates the combined value while
+  // the raw inputs are retained above for form re-render on failure.
+  // linkedinUrl is intentionally not sent (issue #83): registration no
+  // longer asks for it, and submitApplicationEvidence leaves the stored
+  // value untouched when it is absent.
   const result = await submitApplicationEvidence(
     viewer,
-    values,
+    { ...values, phone: toE164(values.countryCode, values.phone) },
     scheduleOutboxDelivery,
   );
   if (!result.ok)

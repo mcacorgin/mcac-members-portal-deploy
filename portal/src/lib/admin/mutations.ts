@@ -19,16 +19,28 @@ import {
   type ConfigValue,
 } from "@/lib/config";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
+import { E164_PATTERN } from "@/lib/phone";
 
 // Admin writes (MEMB-04, CONT-04, ADMIN-03/04). Account-status changes live
 // in lib/account/lifecycle.ts; post moderation lives in the posts kernel.
 
-const adminProfileSchema = z.object({
+export const adminProfileSchema = z.object({
   name: z.string().trim().min(1).max(80),
   city: z.string().trim().max(80),
-  phone: z.string().trim().max(20),
+  // Issue #82: stored phones are E.164. The action wrapper normalizes via
+  // toE164, but the schema enforces it too so no future direct caller of
+  // adminUpdateMemberProfile can persist a non-E.164 value.
+  phone: z
+    .string()
+    .trim()
+    .max(20)
+    .refine((p) => p === "" || E164_PATTERN.test(p), "Enter a valid phone number."),
   company: z.string().trim().max(120),
   title: z.string().trim().max(120),
+  // Admins may leave this empty (unlike the applicant-facing evidenceSchema,
+  // which requires it): an admin edit here is a correction, not a fresh
+  // application.
+  profession: z.string().trim().max(120),
   bio: z.string().trim().max(1000),
   linkedinUrl: z.string().trim().url().max(200).or(z.literal("")),
   phoneVisibility: z.enum(["visible", "hidden", "admin_only"]),
@@ -131,6 +143,7 @@ export async function adminUpdateMemberProfile(
         phone: parsed.data.phone,
         company: parsed.data.company,
         title: parsed.data.title,
+        profession: parsed.data.profession,
         bio: parsed.data.bio,
         linkedinUrl: parsed.data.linkedinUrl,
         phoneVisibility: parsed.data.phoneVisibility,

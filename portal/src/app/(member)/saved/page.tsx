@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { BookmarkSimpleIcon } from "@phosphor-icons/react/dist/ssr/BookmarkSimple";
 import { requireViewer } from "@/lib/auth";
 import { memberAccessError } from "@/lib/authz";
 import { resolveLandingPath } from "@/lib/account/routing";
@@ -50,7 +51,7 @@ export default async function SavedPage() {
 
       {items.length === 0 ? (
         <EmptyState
-          glyph="☆"
+          glyph={<BookmarkSimpleIcon aria-hidden="true" size={22} />}
           title="Nothing saved yet"
           body="Bookmark a post from Home and it appears here."
           action={<Button href="/home">Go to Home</Button>}

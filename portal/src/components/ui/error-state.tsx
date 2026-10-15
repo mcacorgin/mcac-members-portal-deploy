@@ -19,8 +19,8 @@ export function ErrorState({ title, body, action, className }: ErrorStateProps) 
         className,
       )}
     >
-      <h3 className="mb-1.5 text-base font-semibold text-ink">{title}</h3>
-      <p className="max-w-[44ch] text-ink-secondary">{body}</p>
+      <h2 className="mb-1.5 text-base font-semibold text-ink">{title}</h2>
+      <p className="max-w-[44ch] text-pretty text-ink-secondary">{body}</p>
       {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );

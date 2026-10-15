@@ -117,6 +117,7 @@ export async function getApplicationDetail(
       phone: string;
       company: string;
       title: string;
+      profession: string;
       bio: string;
       linkedinUrl: string;
       phoneVisibility: string;
@@ -175,6 +176,7 @@ export async function getApplicationDetail(
           phone: profile.phone,
           company: profile.company,
           title: profile.title,
+          profession: profile.profession,
           bio: profile.bio,
           linkedinUrl: profile.linkedinUrl,
           phoneVisibility: profile.phoneVisibility,

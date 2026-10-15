@@ -11,6 +11,7 @@ import {
 import type { Section, Viewer } from "@/lib/authz";
 import { err, type ActionResult } from "@/lib/contracts/result";
 import { scheduleOutboxDelivery } from "@/lib/notifications/delivery";
+import { DEFAULT_COUNTRY_CODE, toE164 } from "@/lib/phone";
 
 // Server actions for ADMIN-02 (and the ADMIN-04 suspend quick action).
 // Authorization happens inside the lib functions; these wrappers only load
@@ -42,9 +43,13 @@ export async function decideAction(
 export type AdminProfileInput = {
   name: string;
   city: string;
+  /** Raw national-number input; normalized to E.164 in updateProfileAction. */
   phone: string;
+  /** Selected country code; stripped before the mutation. */
+  countryCode: string;
   company: string;
   title: string;
+  profession: string;
   bio: string;
   linkedinUrl: string;
   phoneVisibility: "visible" | "hidden" | "admin_only";
@@ -58,7 +63,12 @@ export async function updateProfileAction(
   input: AdminProfileInput,
 ): Promise<ActionResult> {
   const viewer = await requireViewer();
-  const result = await adminUpdateMemberProfile(viewer, userId, input);
+  // Normalize to E.164 (issue #82); countryCode is a form-only field.
+  const { countryCode, ...rest } = input;
+  const result = await adminUpdateMemberProfile(viewer, userId, {
+    ...rest,
+    phone: toE164(countryCode || DEFAULT_COUNTRY_CODE, rest.phone),
+  });
   if (result.ok) revalidateAdmin(userId);
   return result;
 }

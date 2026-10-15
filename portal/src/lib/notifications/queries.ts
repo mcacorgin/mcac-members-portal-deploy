@@ -1,4 +1,5 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { z } from "zod";
 import { db, tables } from "@/db";
 import { memberAccessError, type Viewer } from "@/lib/authz";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
@@ -15,7 +16,7 @@ export type NotificationRow = {
 
 export async function listNotifications(
   viewer: Viewer | null,
-  input: { page?: number; pageSize?: number } = {},
+  input: { page?: number; pageSize?: number; unreadFirst?: boolean } = {},
 ): Promise<ActionResult<{ rows: NotificationRow[]; unread: number }>> {
   const denied = memberAccessError(viewer);
   if (denied) return err(denied, "Member access is required.");
@@ -25,7 +26,14 @@ export async function listNotifications(
   const [rows, [{ unread }]] = await Promise.all([
     db.query.notifications.findMany({
       where: eq(tables.notifications.userId, viewer!.id),
-      orderBy: desc(tables.notifications.createdAt),
+      // The bell tray asks for unread rows first, so an unread row older
+      // than newer read ones still reaches the tray and can be cleared.
+      orderBy: input.unreadFirst
+        ? [
+            sql`(${tables.notifications.readAt} is null) desc`,
+            desc(tables.notifications.createdAt),
+          ]
+        : desc(tables.notifications.createdAt),
       limit: pageSize,
       offset: (page - 1) * pageSize,
     }),
@@ -114,6 +122,43 @@ export async function markAllNotificationsRead(
       and(
         eq(tables.notifications.userId, viewer!.id),
         isNull(tables.notifications.readAt),
+      ),
+    );
+  return ok(undefined);
+}
+
+/**
+ * The bell tray shows at most this many rows, so one open marks at most this
+ * many read.
+ */
+export const NOTIFICATION_TRAY_MAX = 20;
+
+const shownIdsSchema = z.array(z.uuid()).min(1).max(NOTIFICATION_TRAY_MAX);
+
+/**
+ * Bell tray opened: mark read the unread notifications it showed, by id.
+ * Anything it did not show (it arrived after the render, or there was no
+ * room) stays unread, so the badge still counts it. `ids` is untrusted: it
+ * must be 1-20 notification ids, and only the viewer's own rows change.
+ */
+export async function markNotificationsReadByIds(
+  viewer: Viewer | null,
+  ids: unknown,
+): Promise<ActionResult> {
+  const denied = memberAccessError(viewer);
+  if (denied) return err(denied, "Member access is required.");
+  const parsed = shownIdsSchema.safeParse(ids);
+  if (!parsed.success) {
+    return err("validation", "Notification ids are required.");
+  }
+  await db
+    .update(tables.notifications)
+    .set({ readAt: new Date() })
+    .where(
+      and(
+        eq(tables.notifications.userId, viewer!.id),
+        isNull(tables.notifications.readAt),
+        inArray(tables.notifications.id, parsed.data),
       ),
     );
   return ok(undefined);

@@ -17,10 +17,12 @@ import {
   updateProfileAction,
   type AdminProfileInput,
 } from "./actions";
+import { PhoneInput } from "@/components/phone-input";
+import { DEFAULT_COUNTRY_CODE, splitE164 } from "@/lib/phone";
 
 const VISIBILITY_OPTIONS = [
   { value: "visible", label: "Visible to members" },
-  { value: "hidden", label: "Hidden from everyone" },
+  { value: "hidden", label: "Hidden from members" },
   { value: "admin_only", label: "Administrators only" },
 ] as const;
 
@@ -32,6 +34,7 @@ export function ProfileForm({
   profile,
   allTags,
   memberTagIds,
+  professionOptions,
 }: {
   userId: string;
   name: string;
@@ -40,6 +43,7 @@ export function ProfileForm({
     phone: string;
     company: string;
     title: string;
+    profession: string;
     bio: string;
     linkedinUrl: string;
     phoneVisibility: string;
@@ -48,6 +52,8 @@ export function ProfileForm({
   };
   allTags: TagOption[];
   memberTagIds: string[];
+  /** Existing member professions, for the profession field's typeahead. */
+  professionOptions: string[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -79,8 +85,10 @@ export function ProfileForm({
       name: String(form.get("name") ?? ""),
       city: String(form.get("city") ?? ""),
       phone: String(form.get("phone") ?? ""),
+      countryCode: String(form.get("countryCode") ?? DEFAULT_COUNTRY_CODE),
       company: String(form.get("company") ?? ""),
       title: String(form.get("title") ?? ""),
+      profession: String(form.get("profession") ?? ""),
       bio: String(form.get("bio") ?? ""),
       linkedinUrl: String(form.get("linkedinUrl") ?? ""),
       phoneVisibility: String(
@@ -154,6 +162,24 @@ export function ProfileForm({
           <FormField label="Title" htmlFor="pf-title" error={fieldError("title")}>
             <Input id="pf-title" name="title" defaultValue={profile.title} />
           </FormField>
+          <FormField
+            label="Profession"
+            htmlFor="pf-profession"
+            hint="What the member does, in a few words. For example Chartered Accountant or Tax Advisor. Members search for it. An application cannot be approved while this is empty."
+            error={fieldError("profession")}
+          >
+            <Input
+              id="pf-profession"
+              name="profession"
+              list="pf-profession-options"
+              defaultValue={profile.profession}
+            />
+            <datalist id="pf-profession-options">
+              {professionOptions.map((label) => (
+                <option key={label} value={label} />
+              ))}
+            </datalist>
+          </FormField>
         </div>
         <FormField label="Bio" htmlFor="pf-bio" error={fieldError("bio")}>
           <Textarea id="pf-bio" name="bio" defaultValue={profile.bio} rows={4} />
@@ -165,7 +191,16 @@ export function ProfileForm({
             htmlFor="pf-phone"
             error={fieldError("phone")}
           >
-            <Input id="pf-phone" name="phone" defaultValue={profile.phone} />
+            <PhoneInput
+              phoneId="pf-phone"
+              countryCodeId="pf-country-code"
+              defaultNational={splitE164(profile.phone).national}
+              defaultCountryCode={splitE164(profile.phone).countryCode}
+              phoneInvalid={Boolean(fieldError("phone"))}
+              phoneDescribedBy={
+                fieldError("phone") ? "pf-phone-error" : undefined
+              }
+            />
           </FormField>
           <FormField
             label="Phone visibility"
@@ -237,7 +272,7 @@ export function ProfileForm({
         </div>
 
         <fieldset>
-          <legend className="block text-[13px] font-medium text-ink">
+          <legend className="block text-[0.8125rem] font-medium text-ink">
             Expertise areas
           </legend>
           {fieldError("tagIds") ? (

@@ -78,9 +78,9 @@ export default async function MeEditPage() {
       <PreferredContactEmailCard state={emailState} />
 
       <Card>
-        <h3 className="mb-3 text-base font-semibold text-ink">
+        <h2 className="mb-3 text-base font-semibold text-ink">
           Profile details
-        </h3>
+        </h2>
         <ProfileForm
           defaults={{
             name: viewer.name,
@@ -88,21 +88,23 @@ export default async function MeEditPage() {
             phone: profile.phone,
             company: profile.company,
             title: profile.title,
+            profession: profile.profession,
             bio: profile.bio,
             linkedinUrl: profile.linkedinUrl,
             tagIds: myTagIds,
           }}
           allTags={allTags}
+          professionOptions={filtersRes.data.professions.map((p) => p.label)}
         />
       </Card>
 
       <Card>
-        <h3 className="mb-1 text-base font-semibold text-ink">
+        <h2 className="mb-1 text-base font-semibold text-ink">
           Contact visibility
-        </h3>
-        <p className="mb-3 text-[13px] text-ink-secondary">
-          Decide separately which contact fields approved members may see.
-          Admin-only fields stay available to administrators.
+        </h2>
+        <p className="mb-3 text-[0.8125rem] text-ink-secondary">
+          Choose who sees each contact detail. Admin-only means only MCAC
+          admins.
         </p>
         <VisibilityForm
           defaults={{
@@ -114,12 +116,12 @@ export default async function MeEditPage() {
       </Card>
 
       <Card>
-        <h3 className="mb-1 text-base font-semibold text-ink">
+        <h2 className="mb-1 text-base font-semibold text-ink">
           Community updates
-        </h3>
-        <p className="mb-3 text-[13px] text-ink-secondary">
-          Optional community updates from the privacy notice. Change this at
-          any time; withdrawing takes effect from the moment you save.
+        </h2>
+        <p className="mb-3 text-[0.8125rem] text-ink-secondary">
+          Choose whether MCAC may send you community news. You can change
+          this at any time.
         </p>
         <OptionalConsentsForm
           choices={{

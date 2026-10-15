@@ -7,7 +7,7 @@ import type { Section } from "@/lib/authz";
 import { setSectionOverrideAction } from "./actions";
 
 const SECTIONS: { section: Section; label: string }[] = [
-  { section: "opportunity", label: "Opportunities" },
+  { section: "opportunity", label: "Business Opportunities" },
   { section: "job", label: "Jobs" },
   { section: "knowledge", label: "Knowledge" },
   { section: "event", label: "Events" },

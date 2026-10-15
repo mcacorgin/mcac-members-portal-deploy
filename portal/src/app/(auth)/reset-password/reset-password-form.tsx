@@ -25,7 +25,7 @@ export function ResetPasswordForm({
   if (state.done) {
     return (
       <div className="grid gap-3" role="status">
-        <h3 className="text-base font-semibold text-ink">Password updated</h3>
+        <h2 className="text-base font-semibold text-ink">Password updated</h2>
         <p className="text-sm text-ink-secondary">
           Your new password is saved. Sign in with it to continue.
         </p>
@@ -44,6 +44,7 @@ export function ResetPasswordForm({
   return (
     <form action={formAction} className="grid gap-4">
       <input type="hidden" name="email" value={email} />
+      <input type="text" autoComplete="username" value={email} readOnly hidden />
       <input type="hidden" name="token" value={token} />
       {state.error && !passwordError ? (
         <p

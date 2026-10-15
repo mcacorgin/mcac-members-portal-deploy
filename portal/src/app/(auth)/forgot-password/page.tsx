@@ -21,7 +21,10 @@ export default async function ForgotPasswordPage() {
         <ForgotPasswordForm />
         <p className="flex min-h-tap items-center gap-1 border-t border-border pt-4 text-sm text-ink-secondary">
           Remembered it?
-          <Link href="/sign-in" className="font-medium text-navy-text">
+          <Link
+            href="/sign-in"
+            className="inline-flex min-h-tap items-center font-medium text-navy-text"
+          >
             Back to sign in
           </Link>
         </p>

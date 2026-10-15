@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { ConsentCheckbox } from "@/components/consent-checkbox";
 import { Button } from "@/components/ui";
 import type { ActionResult } from "@/lib/contracts/result";
@@ -23,26 +23,15 @@ export function OptionalConsentsForm({
     FormData
   >(saveOptionalConsentsAction, null);
   const [communications, setCommunications] = useState(choices.communications);
+  const messageRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (state) {
+      messageRef.current?.focus();
+    }
+  }, [state]);
 
   return (
     <form action={formAction} className="grid gap-3">
-      {state?.ok ? (
-        <p
-          role="status"
-          className="rounded-control border border-success/25 bg-success-bg px-3.5 py-2.5 font-medium text-success"
-        >
-          Consent choices saved.
-        </p>
-      ) : null}
-      {state && !state.ok ? (
-        <p
-          role="alert"
-          className="rounded-control border border-danger/25 bg-danger-bg px-3.5 py-2.5 font-medium text-danger"
-        >
-          {state.message}
-        </p>
-      ) : null}
-
       <ConsentCheckbox
         name="communications"
         checked={communications}
@@ -53,10 +42,30 @@ export function OptionalConsentsForm({
         footer="This never affects your application or membership."
       />
 
-      <div>
+      <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" variant="secondary" disabled={pending}>
-          {pending ? "Saving choices..." : "Save consent choices"}
+          {pending ? "Saving choices…" : "Save consent choices"}
         </Button>
+        {state?.ok ? (
+          <p
+            ref={messageRef}
+            role="status"
+            tabIndex={-1}
+            className="text-sm font-medium text-success"
+          >
+            Consent choices saved.
+          </p>
+        ) : null}
+        {state && !state.ok ? (
+          <p
+            ref={messageRef}
+            role="alert"
+            tabIndex={-1}
+            className="text-sm font-medium text-danger"
+          >
+            {state.message}
+          </p>
+        ) : null}
       </div>
     </form>
   );

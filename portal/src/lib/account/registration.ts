@@ -12,6 +12,7 @@ import {
 } from "@/lib/outbox";
 import type { Viewer } from "@/lib/authz";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
+import { E164_PATTERN } from "@/lib/phone";
 
 // Registration, consent, visibility, application evidence, and credential
 // recovery (AUTH-01..03, AUTH-05/07/08). Orchestrator-owned: UI lanes call
@@ -267,18 +268,26 @@ export async function getOwnContactSettings(viewer: Viewer) {
 // decision of 2026-07-30. Required: full name, WhatsApp phone, city, company
 // or practice, title, >=1 expertise area. LinkedIn URL is optional (client
 // direction 2026-07-30); when filled it must still be a linkedin.com URL.
-// Bio stays optional.
+// Bio is the mandatory professional summary (issue #96).
 // needs_changes applicants edit here; submitting also resubmits to pending.
 // ---------------------------------------------------------------------------
 
 export const evidenceSchema = z.object({
   name: z.string().trim().min(1, "Enter your full name.").max(80),
   city: z.string().trim().min(1, "Enter your city.").max(80),
-  phone: z.string().trim().min(8, "Enter a WhatsApp phone number.").max(20),
+  phone: z
+    .string()
+    .trim()
+    .regex(E164_PATTERN, "Enter a valid phone number."),
   tagIds: z.array(z.string()).min(1, "Choose at least one expertise area."),
   company: z.string().trim().min(1, "Enter your company or practice.").max(120),
   title: z.string().trim().min(1, "Enter your title.").max(120),
-  bio: z.string().trim().max(1000).optional().default(""),
+  profession: z.string().trim().min(1, "Enter your profession.").max(120),
+  bio: z.string().trim().min(1, "Enter a professional summary.").max(1000),
+  // linkedinUrl is optional and has no default: the registration evidence
+  // form (issue #83) no longer collects it, and an absent value must leave
+  // the stored URL untouched. The member profile editor (/me) still sends
+  // it explicitly.
   linkedinUrl: z
     .string()
     .trim()
@@ -287,18 +296,19 @@ export const evidenceSchema = z.object({
       (u) => u === "" || /(^https?:\/\/)([a-z0-9-]+\.)*linkedin\.com\//i.test(u),
       "Enter your LinkedIn profile URL.",
     )
-    .optional()
-    .default(""),
+    .optional(),
 });
 
 export type EvidenceInput = z.infer<typeof evidenceSchema>;
 
-const MISSING_LABELS: [label: string, empty: (u: { name: string }, p: { phone: string; city: string; company: string; title: string; linkedinUrl: string }, tagCount: number) => boolean][] = [
+const MISSING_LABELS: [label: string, empty: (u: { name: string }, p: { phone: string; city: string; company: string; title: string; profession: string; bio: string; linkedinUrl: string }, tagCount: number) => boolean][] = [
   ["full name", (u) => !u.name.trim()],
   ["phone", (_u, p) => !p.phone.trim()],
   ["city", (_u, p) => !p.city.trim()],
   ["company or practice", (_u, p) => !p.company.trim()],
   ["title", (_u, p) => !p.title.trim()],
+  ["profession", (_u, p) => !p.profession.trim()],
+  ["professional summary", (_u, p) => !p.bio.trim()],
   ["expertise area", (_u, _p, tagCount) => tagCount === 0],
 ];
 
@@ -324,6 +334,8 @@ export async function getEvidenceStatus(
     city: profile?.city ?? "",
     company: profile?.company ?? "",
     title: profile?.title ?? "",
+    profession: profile?.profession ?? "",
+    bio: profile?.bio ?? "",
     linkedinUrl: profile?.linkedinUrl ?? "",
   };
   const missing = MISSING_LABELS.filter(([, empty]) =>
@@ -395,6 +407,7 @@ export async function submitApplicationEvidence(
         phone: tables.profiles.phone,
         company: tables.profiles.company,
         title: tables.profiles.title,
+        profession: tables.profiles.profession,
         bio: tables.profiles.bio,
         linkedinUrl: tables.profiles.linkedinUrl,
         onboardingCompletedAt: tables.profiles.onboardingCompletedAt,
@@ -415,6 +428,10 @@ export async function submitApplicationEvidence(
     // already set) - a genuine first submission always notifies even if it
     // happens to match defaults, and any real edit on a needs_changes
     // resubmit always notifies.
+    // linkedinUrl is only compared when the caller sent one (the /me editor
+    // does; the registration evidence form no longer does, issue #83). An
+    // absent value must not count as a change, or every re-save would look
+    // like a real edit and re-notify admins.
     const isNoOpResubmit =
       Boolean(currentProfile?.onboardingCompletedAt) &&
       currentUser?.name === parsed.data.name &&
@@ -422,8 +439,10 @@ export async function submitApplicationEvidence(
       currentProfile?.phone === parsed.data.phone &&
       currentProfile?.company === parsed.data.company &&
       currentProfile?.title === parsed.data.title &&
+      currentProfile?.profession === parsed.data.profession &&
       currentProfile?.bio === parsed.data.bio &&
-      currentProfile?.linkedinUrl === parsed.data.linkedinUrl &&
+      (parsed.data.linkedinUrl === undefined ||
+        currentProfile?.linkedinUrl === parsed.data.linkedinUrl) &&
       currentTagIds.length === sortedNewTagIds.length &&
       currentTagIds.every((id, i) => id === sortedNewTagIds[i]);
 
@@ -456,8 +475,13 @@ export async function submitApplicationEvidence(
         phone: parsed.data.phone,
         company: parsed.data.company,
         title: parsed.data.title,
+        profession: parsed.data.profession,
         bio: parsed.data.bio,
-        linkedinUrl: parsed.data.linkedinUrl,
+        // Absent linkedinUrl (registration evidence form, issue #83) leaves
+        // the stored URL untouched; the /me editor sends it explicitly.
+        ...(parsed.data.linkedinUrl !== undefined
+          ? { linkedinUrl: parsed.data.linkedinUrl }
+          : {}),
         ...(shouldStampOnboarding ? { onboardingCompletedAt: new Date() } : {}),
       })
       .where(eq(tables.profiles.userId, viewer.id));

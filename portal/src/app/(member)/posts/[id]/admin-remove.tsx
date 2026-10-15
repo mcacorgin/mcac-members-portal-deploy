@@ -75,7 +75,7 @@ export function AdminRemoveControl({ postId }: AdminRemoveControlProps) {
         <FieldError id={`${id}-error`}>{error}</FieldError>
         <div className="flex items-center gap-2">
           <Button type="submit" variant="destructive" disabled={pending}>
-            {pending ? "Removing..." : "Confirm removal"}
+            {pending ? "Removing…" : "Confirm removal"}
           </Button>
           <Button
             type="button"

@@ -8,7 +8,7 @@ export function Select({ className, children, ...props }: SelectProps) {
     <select
       {...props}
       className={cx(
-        "w-full min-h-tap cursor-pointer rounded-control border border-border-strong bg-surface px-3 text-ink aria-invalid:border-danger",
+        "w-full min-h-tap cursor-pointer rounded-control border border-border-input bg-surface px-3 text-ink aria-invalid:border-danger",
         className,
       )}
     >

@@ -48,7 +48,7 @@ export function SuspendButton({
   }
 
   return (
-    <form onSubmit={confirm} className="grid min-w-52 gap-1.5">
+    <form onSubmit={confirm} className="grid min-w-[min(13rem,100%)] gap-1.5">
       <Input
         aria-label={`Reason for suspending ${name}`}
         placeholder="Reason (shown to the member)"

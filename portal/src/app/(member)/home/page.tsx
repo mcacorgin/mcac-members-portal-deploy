@@ -1,20 +1,23 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { CaretDownIcon } from "@phosphor-icons/react/dist/ssr/CaretDown";
+import { MagnifyingGlassIcon } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass";
+import { NewspaperIcon } from "@phosphor-icons/react/dist/ssr/Newspaper";
 import { requireViewer } from "@/lib/auth";
 import { enabledSections, memberAccessError } from "@/lib/authz";
 import { resolveLandingPath } from "@/lib/account/routing";
+import { feedHref, feedViewParam, readFeedParams } from "@/lib/posts/feed-url";
 import { listFeed, type FeedView } from "@/lib/posts/queries";
-import { POST_TYPE_NAMES, type PostTypeName } from "@/lib/posts/types";
 import {
   MANDATE_TYPE_LABELS,
   OPPORTUNITY_MANDATE_TYPES,
-  type OpportunityMandateType,
 } from "@/lib/posts/opportunity";
 import {
   Button,
   EmptyState,
   ErrorState,
   Input,
+  Label,
   PageHeader,
   ScreenId,
   Select,
@@ -28,62 +31,43 @@ export const metadata = { title: "Home - MCAC Members Portal" };
 // HOME-01 - Home feed. View tabs, per-type filter chips (section-gated),
 // search, pagination. Rendered as a child of the (member) shell layout.
 
+// "old" is the stored status of expired posts. The tab reads "Expired" and
+// its links say ?view=expired (see lib/posts/feed-url.ts).
 const VIEWS: { view: FeedView; label: string }[] = [
   { view: "active", label: "Active" },
   { view: "tagged", label: "Tagged for me" },
-  { view: "old", label: "Old" },
+  { view: "old", label: "Expired" },
   { view: "mine", label: "My posts" },
 ];
 
 const EMPTY_COPY: Record<FeedView, { title: string; body: string }> = {
   active: {
-    title: "The network is ready for its first share",
-    body: "No opportunities, jobs, knowledge, or events have been posted yet.",
+    title: "The network is ready for its first post",
+    body: "No business opportunities, jobs, knowledge, or events have been posted yet.",
   },
   tagged: {
     title: "Nothing tagged for you yet",
     body: "When a member tags you in a post it will appear here.",
   },
   old: {
-    title: "No old posts",
-    body: "Expired opportunities move here after their expiry date.",
+    title: "No expired posts",
+    body: "Business opportunities and jobs move here after their expiry date.",
   },
   mine: {
-    title: "You have not shared anything yet",
+    title: "You have not posted anything yet",
     body: "Posts you publish will be listed here.",
   },
 };
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-function first(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function feedHref(params: {
-  view: FeedView;
-  type?: PostTypeName;
-  q?: string;
-  mandateType?: OpportunityMandateType;
-  industry?: string;
-  geography?: string;
-  page?: number;
-}): string {
-  const search = new URLSearchParams();
-  if (params.view !== "active") search.set("view", params.view);
-  if (params.type) search.set("type", params.type);
-  if (params.q) search.set("q", params.q);
-  if (params.mandateType) search.set("mandateType", params.mandateType);
-  if (params.industry) search.set("industry", params.industry);
-  if (params.geography) search.set("geography", params.geography);
-  if (params.page && params.page > 1) search.set("page", String(params.page));
-  const qs = search.toString();
-  return qs ? `/home?${qs}` : "/home";
-}
+// Small caption above each tab row. The rows point at it with
+// aria-labelledby, so the visible word is also the row's name.
+const ROW_LABEL_CLASS = "mb-1 text-xs font-medium text-ink-muted";
 
 function viewClass(active: boolean): string {
   return cx(
-    "ui-view-chip inline-flex min-h-tap min-w-0 items-center justify-center rounded-[6px] px-2 text-center text-[13px] font-medium transition-[color,background-color,box-shadow,transform]",
+    "ui-view-chip inline-flex min-h-tap min-w-0 items-center justify-center rounded-[6px] px-2 text-center text-[0.8125rem] font-medium transition-[color,background-color,box-shadow,transform]",
     active
       ? "bg-surface font-semibold text-navy-text shadow-sm"
       : "text-ink-secondary hover:bg-surface/70",
@@ -92,7 +76,7 @@ function viewClass(active: boolean): string {
 
 function typeClass(active: boolean): string {
   return cx(
-    "ui-type-chip inline-flex min-h-tap flex-none items-center border-b-2 px-2.5 text-[13px] font-medium transition-[color,border-color,transform]",
+    "ui-type-chip inline-flex min-h-tap flex-none items-center border-b-2 px-2.5 text-[0.8125rem] font-medium transition-[color,border-color,transform]",
     active
       ? "border-navy text-navy-text"
       : "border-transparent text-ink-muted hover:text-ink-secondary",
@@ -108,27 +92,19 @@ export default async function HomePage({
   const denied = memberAccessError(viewer);
   if (denied) redirect(await resolveLandingPath(viewer));
 
-  const sp = await searchParams;
-  const viewParam = first(sp.view);
-  const view: FeedView = VIEWS.some((v) => v.view === viewParam)
-    ? (viewParam as FeedView)
-    : "active";
-  const typeParam = first(sp.type);
-  const type: PostTypeName | undefined = POST_TYPE_NAMES.includes(
-    typeParam as PostTypeName,
-  )
-    ? (typeParam as PostTypeName)
-    : undefined;
-  const q = first(sp.q)?.trim().slice(0, 200) || undefined;
-  const mandateRaw = first(sp.mandateType);
-  const mandateType = OPPORTUNITY_MANDATE_TYPES.includes(
-    mandateRaw as OpportunityMandateType,
-  )
-    ? (mandateRaw as OpportunityMandateType)
-    : undefined;
-  const industry = first(sp.industry)?.trim().slice(0, 160) || undefined;
-  const geography = first(sp.geography)?.trim().slice(0, 160) || undefined;
-  const pageNum = Math.max(1, Number.parseInt(first(sp.page) ?? "1", 10) || 1);
+  // Opportunity filters apply only with ?type=opportunity; readFeedParams
+  // drops them elsewhere and sends older All-tab filter links to that tab.
+  const { params, redirectTo } = readFeedParams(await searchParams);
+  if (redirectTo) redirect(redirectTo);
+  const {
+    view,
+    type,
+    q,
+    mandateType,
+    industry,
+    geography,
+    page: pageNum,
+  } = params;
 
   const [enabledTypes, result] = await Promise.all([
     enabledSections(viewer!.id),
@@ -146,7 +122,7 @@ export default async function HomePage({
   const header = (
     <PageHeader
       title="Home"
-      description="Opportunities, jobs, knowledge, and events from the network."
+      description="Business opportunities, jobs, knowledge, and events from the network."
       action={<ScreenId id="HOME-01" />}
     />
   );
@@ -157,7 +133,7 @@ export default async function HomePage({
         {header}
         <ErrorState
           title="This section is not available"
-          body="An administrator has disabled member posts for your account. Other areas of the portal remain available."
+          body="An admin has turned off posts for your account. The rest of the portal still works."
         />
       </div>
     );
@@ -198,6 +174,11 @@ export default async function HomePage({
   const opportunityFilterCount = [mandateType, industry, geography].filter(
     Boolean,
   ).length;
+  // A member who can see only business opportunities gets no type row, so
+  // their All feed is the opportunity feed and the filters show there too.
+  const showOpportunityFilters =
+    type === "opportunity" ||
+    (enabledTypes.length === 1 && enabledTypes[0] === "opportunity");
 
   return (
     <div className="ui-feed-page mx-auto w-full max-w-3xl">
@@ -207,7 +188,7 @@ export default async function HomePage({
           <>
             <span className="sm:hidden">Latest from the MCAC network.</span>
             <span className="hidden sm:inline">
-              Opportunities, jobs, knowledge, and events from the network.
+              Business opportunities, jobs, knowledge, and events from the network.
             </span>
           </>
         }
@@ -215,9 +196,12 @@ export default async function HomePage({
         className="ui-feed-heading"
       />
 
+      <p id="home-view-label" className={ROW_LABEL_CLASS}>
+        Show
+      </p>
       <nav
-        aria-label="Feed views"
-        className="ui-view-switcher mb-2 grid grid-cols-4 gap-1 rounded-control bg-surface-sunken p-1"
+        aria-labelledby="home-view-label"
+        className="ui-view-switcher mb-3 grid grid-cols-4 gap-1 rounded-control bg-surface-sunken p-1"
       >
         {VIEWS.map((v) => (
           <Link
@@ -226,34 +210,51 @@ export default async function HomePage({
             aria-current={view === v.view ? "page" : undefined}
             className={viewClass(view === v.view)}
           >
-            {v.label}
+            {v.view === "tagged" ? (
+              <>
+                <span className="sr-only">Tagged for me</span>
+                <span aria-hidden="true" className="sm:hidden">
+                  Tagged
+                </span>
+                <span aria-hidden="true" className="hidden sm:inline">
+                  Tagged for me
+                </span>
+              </>
+            ) : (
+              v.label
+            )}
           </Link>
         ))}
       </nav>
 
       {enabledTypes.length > 1 ? (
-        <nav
-          aria-label="Post types"
-          className="ui-type-switcher -mx-1 mb-2 flex overflow-x-auto px-1"
-        >
-          <Link
-            href={feedHref({ view, q, mandateType, industry, geography })}
-            aria-current={type === undefined ? "true" : undefined}
-            className={typeClass(type === undefined)}
+        <>
+          <p id="home-type-label" className={ROW_LABEL_CLASS}>
+            Type
+          </p>
+          <nav
+            aria-labelledby="home-type-label"
+            className="ui-type-switcher -mx-1 mb-2 flex overflow-x-auto px-1"
           >
-            All
-          </Link>
-          {enabledTypes.map((t) => (
             <Link
-              key={t}
-              href={feedHref({ view, type: t, q })}
-              aria-current={type === t ? "true" : undefined}
-              className={typeClass(type === t)}
+              href={feedHref({ view, q })}
+              aria-current={type === undefined ? "true" : undefined}
+              className={typeClass(type === undefined)}
             >
-              {TYPE_PLURAL_LABELS[t]}
+              All
             </Link>
-          ))}
-        </nav>
+            {enabledTypes.map((t) => (
+              <Link
+                key={t}
+                href={feedHref({ view, type: t, q })}
+                aria-current={type === t ? "true" : undefined}
+                className={typeClass(type === t)}
+              >
+                {TYPE_PLURAL_LABELS[t]}
+              </Link>
+            ))}
+          </nav>
+        </>
       ) : null}
 
       <form
@@ -263,7 +264,7 @@ export default async function HomePage({
         className="ui-feed-toolbar mb-4 grid gap-2.5"
       >
         {view !== "active" ? (
-          <input type="hidden" name="view" value={view} />
+          <input type="hidden" name="view" value={feedViewParam(view)} />
         ) : null}
         {type ? <input type="hidden" name="type" value={type} /> : null}
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
@@ -278,52 +279,60 @@ export default async function HomePage({
             Search
           </Button>
         </div>
-        {!type || type === "opportunity" ? (
+        {showOpportunityFilters ? (
           <details
             className="ui-filter-disclosure rounded-control border border-border bg-surface"
             open={opportunityFilterCount > 0}
           >
             <summary className="flex min-h-tap cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-medium text-ink-secondary">
               <span className="flex items-center gap-2">
-                Opportunity filters
+                Business opportunity filters
                 {opportunityFilterCount > 0 ? (
-                  <span className="grid size-5 place-items-center rounded-full bg-navy text-[11px] font-semibold text-white">
+                  <span className="grid size-5 place-items-center rounded-full bg-navy text-[0.6875rem] font-semibold text-white">
                     {opportunityFilterCount}
                   </span>
                 ) : null}
               </span>
-              <span
+              <CaretDownIcon
                 aria-hidden="true"
-                className="ui-filter-caret text-base text-ink-muted"
-              >
-                ⌄
-              </span>
+                size={16}
+                className="ui-filter-caret text-ink-muted"
+              />
             </summary>
             <div className="grid gap-2.5 border-t border-border p-3 sm:grid-cols-3">
-              <Select
-                name="mandateType"
-                defaultValue={mandateType ?? ""}
-                aria-label="Mandate type"
-              >
-                <option value="">All mandate types</option>
-                {OPPORTUNITY_MANDATE_TYPES.map((kind) => (
-                  <option key={kind} value={kind}>
-                    {MANDATE_TYPE_LABELS[kind]}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                name="industry"
-                defaultValue={industry ?? ""}
-                placeholder="Industry"
-                aria-label="Filter by industry"
-              />
-              <Input
-                name="geography"
-                defaultValue={geography ?? ""}
-                placeholder="Geography"
-                aria-label="Filter by geography"
-              />
+              <div className="grid gap-1">
+                <Label htmlFor="home-mandate-type">Mandate type</Label>
+                <Select
+                  id="home-mandate-type"
+                  name="mandateType"
+                  defaultValue={mandateType ?? ""}
+                >
+                  <option value="">All mandate types</option>
+                  {OPPORTUNITY_MANDATE_TYPES.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {MANDATE_TYPE_LABELS[kind]}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="grid gap-1">
+                <Label htmlFor="home-industry">Industry</Label>
+                <Input
+                  id="home-industry"
+                  name="industry"
+                  defaultValue={industry ?? ""}
+                  placeholder="Industry"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label htmlFor="home-geography">Geography</Label>
+                <Input
+                  id="home-geography"
+                  name="geography"
+                  defaultValue={geography ?? ""}
+                  placeholder="Geography"
+                />
+              </div>
               <div className="flex items-center gap-3 sm:col-span-3">
                 <Button type="submit" variant="secondary">
                   Apply filters
@@ -345,7 +354,7 @@ export default async function HomePage({
       {items.length === 0 ? (
         filtered ? (
           <EmptyState
-            glyph="?"
+            glyph={<MagnifyingGlassIcon aria-hidden="true" size={22} />}
             title="No posts match"
             body={
               q
@@ -360,12 +369,12 @@ export default async function HomePage({
           />
         ) : (
           <EmptyState
-            glyph="+"
+            glyph={<NewspaperIcon aria-hidden="true" size={22} />}
             title={EMPTY_COPY[view].title}
             body={EMPTY_COPY[view].body}
             action={
               view === "active" || view === "mine" ? (
-                <Button href="/share">Share something</Button>
+                <Button href="/share">Post something</Button>
               ) : undefined
             }
           />

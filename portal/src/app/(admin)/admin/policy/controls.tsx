@@ -80,7 +80,7 @@ export function BrandControl({
   return (
     <Card>
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-base font-semibold text-ink">Brand</h3>
+        <h2 className="text-base font-semibold text-ink">Brand</h2>
         <SaveIndicator state={state} />
       </div>
       <p className="mb-2 text-sm text-ink-secondary">
@@ -136,7 +136,7 @@ export function SignInControl({ initial }: { initial: boolean }) {
   return (
     <Card>
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-base font-semibold text-ink">Sign-in</h3>
+        <h2 className="text-base font-semibold text-ink">Sign-in</h2>
         <SaveIndicator state={state} />
       </div>
       <Checkbox
@@ -159,7 +159,7 @@ export function SignInControl({ initial }: { initial: boolean }) {
 
 const VISIBILITY_OPTIONS = [
   { value: "visible", label: "Visible to members" },
-  { value: "hidden", label: "Hidden from everyone" },
+  { value: "hidden", label: "Hidden from members" },
   { value: "admin_only", label: "Administrators only" },
 ] as const;
 
@@ -219,7 +219,7 @@ export function ContactDefaultsControl({
 }) {
   return (
     <Card>
-      <h3 className="text-base font-semibold text-ink">Contact defaults</h3>
+      <h2 className="text-base font-semibold text-ink">Contact defaults</h2>
       <p className="mb-2 text-sm text-ink-secondary">
         Default visibility for contact fields. Applies to NEW registrations
         only; existing members keep their own choices.
@@ -271,9 +271,9 @@ export function OpportunitiesControl({
 
   return (
     <Card>
-      <h3 className="text-base font-semibold text-ink">Opportunities</h3>
+      <h2 className="text-base font-semibold text-ink">Business Opportunities</h2>
       <p className="mb-3 text-sm text-ink-secondary">
-        Opportunity posts move to the Old view after this many days.
+        Business opportunity posts move to the Expired view after this many days.
       </p>
       <form
         onSubmit={saveExpiry}
@@ -380,7 +380,7 @@ export function SectionsControl({
 }) {
   return (
     <Card>
-      <h3 className="text-base font-semibold text-ink">Sections</h3>
+      <h2 className="text-base font-semibold text-ink">Sections</h2>
       <p className="mb-1 text-sm text-ink-secondary">
         Global section toggles. Turning a section off removes navigation and
         data access for every member; per-member overrides are set on the
@@ -388,7 +388,7 @@ export function SectionsControl({
       </p>
       <SectionToggleRow
         configKey="sections.opportunity"
-        label="Opportunities"
+        label="Business Opportunities"
         initial={opportunity}
       />
       <SectionToggleRow configKey="sections.job" label="Jobs" initial={job} />

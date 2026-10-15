@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { initialsOf } from "@/lib/initials";
 import { cx } from "./cx";
 
 export type AvatarSize = "md" | "lg";
@@ -12,23 +13,24 @@ export type AvatarProps = {
   src?: string;
   size?: AvatarSize;
   className?: string;
+  /** True when the name is already written next to the avatar (a list row,
+   * a profile heading), so a screen reader does not read it twice. */
+  decorative?: boolean;
 };
 
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  const first = parts[0][0] ?? "";
-  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? "") : "";
-  return (first + last).toUpperCase();
-}
-
 const sizeClasses: Record<AvatarSize, string> = {
-  md: "size-[38px] text-[12.5px]",
+  md: "size-[38px] text-[0.78125rem]",
   lg: "size-[54px] text-base",
 };
 
 /** 10px-radius avatar with initials fallback on navy. */
-export function Avatar({ name, src, size = "md", className }: AvatarProps) {
+export function Avatar({
+  name,
+  src,
+  size = "md",
+  className,
+  decorative = false,
+}: AvatarProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
   if (src && src !== failedSrc) {
@@ -36,7 +38,7 @@ export function Avatar({ name, src, size = "md", className }: AvatarProps) {
       // eslint-disable-next-line @next/next/no-img-element -- avatar sources are user-supplied URLs; next/image needs domain allowlisting
       <img
         src={src}
-        alt={name}
+        alt={decorative ? "" : name}
         loading="lazy"
         decoding="async"
         referrerPolicy="no-referrer"
@@ -51,8 +53,9 @@ export function Avatar({ name, src, size = "md", className }: AvatarProps) {
   }
   return (
     <span
-      role="img"
-      aria-label={name}
+      {...(decorative
+        ? { "aria-hidden": true }
+        : { role: "img", "aria-label": name })}
       className={cx(
         "grid flex-none place-items-center rounded-avatar bg-navy font-semibold tracking-[0.02em] text-white",
         sizeClasses[size],

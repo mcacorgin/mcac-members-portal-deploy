@@ -24,12 +24,12 @@ export async function ModerationSection({ admin }: { admin: Viewer }) {
 
   return (
     <section aria-labelledby="moderation-title" className="mt-6">
-      <h3
+      <h2
         id="moderation-title"
         className="mb-2 text-sm font-semibold text-ink-secondary"
       >
         Post moderation
-      </h3>
+      </h2>
       <div className="flex flex-col gap-3">
         {posts.length === 0 ? (
           <p className="text-sm text-ink-muted">No posts yet.</p>
@@ -41,7 +41,7 @@ export async function ModerationSection({ admin }: { admin: Viewer }) {
             >
               <div className="flex flex-wrap items-center gap-2">
                 <Tag>{post.type}</Tag>
-                <strong className="text-sm font-semibold text-ink">
+                <strong className="min-w-0 text-sm font-semibold text-ink">
                   {post.title}
                 </strong>
                 <StatusBadge
@@ -50,12 +50,12 @@ export async function ModerationSection({ admin }: { admin: Viewer }) {
                   {post.status}
                 </StatusBadge>
               </div>
-              <p className="mt-1 text-[13px] text-ink-secondary">
+              <p className="mt-1 text-[0.8125rem] text-ink-secondary">
                 {nameById.get(post.authorId) ?? "Unknown member"} ·{" "}
                 {formatDate(post.createdAt)}
               </p>
               {post.status === "removed" ? (
-                <p className="mt-2 text-[13px] text-ink-muted">
+                <p className="mt-2 text-[0.8125rem] text-ink-muted">
                   Removed: {post.removedReason ?? "no reason recorded"}
                 </p>
               ) : (

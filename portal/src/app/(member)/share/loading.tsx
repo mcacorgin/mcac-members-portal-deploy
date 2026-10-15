@@ -5,7 +5,7 @@ export default function ShareLoading() {
   return (
     <div
       className="mx-auto w-full max-w-3xl"
-      aria-label="Loading Share"
+      aria-label="Loading Post"
     >
       <Skeleton className="mb-5 h-7 w-32" />
       <div className="mb-5 flex gap-2">

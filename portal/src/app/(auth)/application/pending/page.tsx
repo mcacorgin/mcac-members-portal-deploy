@@ -5,7 +5,7 @@ import {
   getOptionalConsents,
 } from "@/lib/account/registration";
 import { resolveLandingPath } from "@/lib/account/routing";
-import { Card, PageHeader, ScreenId, StatusBadge } from "@/components/ui";
+import { Button, Card, PageHeader, ScreenId, StatusBadge } from "@/components/ui";
 import { OptionalConsentsForm } from "@/components/optional-consents-form";
 import { PreferredContactEmailCard } from "@/components/preferred-contact-email-card";
 import { getPreferredContactEmailState } from "@/lib/account/preferred-contact-email";
@@ -47,7 +47,7 @@ export default async function PendingPage() {
     <div className="grid gap-4">
       <PageHeader
         title="Your application is with MCAC"
-        description="An administrator will review your application before you can access the member network."
+        description="An MCAC admin will review it. You can use the portal once they approve you."
         action={<ScreenId id="AUTH-05" />}
         className="mb-1"
       />
@@ -55,17 +55,12 @@ export default async function PendingPage() {
         <StatusBadge status="pending" className="w-fit">
           Pending review
         </StatusBadge>
-        <div className="grid gap-2 text-[15px] leading-relaxed text-ink">
+        <div className="grid gap-2 text-[0.9375rem] leading-relaxed text-ink">
           <p>
-            {submittedOn ? `Submitted ${submittedOn}. ` : ""}An administrator
-            will review your privacy record, contact choices, and application
-            details.
-          </p>
-          <p>
-            <strong>What happens next:</strong> once a decision is recorded you
-            will be routed to the right place automatically - approval opens
-            the member portal directly, and any requested change appears on
-            your status screen.
+            {submittedOn ? `Submitted ${submittedOn}. ` : ""}What happens
+            next: when an admin approves you, tap Check status or sign in
+            again to open the portal. If they need changes, you will see what
+            to fix here.
           </p>
           <p className="font-semibold">
             No member content is available while pending.
@@ -77,6 +72,13 @@ export default async function PendingPage() {
               Check status
             </PendingButton>
           </form>
+          <Button
+            href="/application/evidence"
+            variant="secondary"
+            className="flex-1 min-w-36"
+          >
+            Edit my application
+          </Button>
           <form action={signOutAction} className="grid flex-1 min-w-36">
             <PendingButton variant="secondary" pendingLabel="Signing out...">
               Sign out
@@ -84,13 +86,23 @@ export default async function PendingPage() {
           </form>
         </div>
         <p className="border-t border-border pt-3 text-xs text-ink-muted">
-          Need help with your application? Contact admin@mcac.org.in.
+          Need help with your application? Contact{" "}
+          <a
+            href="mailto:admin@mcac.org.in"
+            className="font-medium text-navy-text underline"
+          >
+            admin@mcac.org.in
+          </a>
+          .
         </p>
       </Card>
+      <p className="text-xs text-ink-muted">
+        Nothing else is needed. The settings below are optional.
+      </p>
       {emailState ? <PreferredContactEmailCard state={emailState} /> : null}
       <Card className="grid gap-3 p-5">
-        <h3 className="text-base font-semibold text-ink">Community updates</h3>
-        <p className="text-[13px] text-ink-secondary">
+        <h2 className="text-base font-semibold text-ink">Community updates</h2>
+        <p className="text-[0.8125rem] text-ink-secondary">
           Optional community updates from the privacy notice. Change this at
           any time, whatever happens to your application.
         </p>
