@@ -9,9 +9,17 @@ import {
   type Viewer,
 } from "@/lib/authz";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
+import { VERTICAL_INTEREST_LABELS } from "@/lib/expertise-groups";
 import { escapeLike } from "@/lib/sql-text";
 import { cityKey, groupCities, type DirectoryCity } from "./cities";
 import { groupProfessions, type DirectoryProfession } from "./professions";
+import {
+  buildProfessionFilterOptions,
+  containsSearchTerm,
+  escapeRegex,
+  matchProfessionFilter,
+  professionFilterTerms,
+} from "./profession-filter";
 import { expandQuery, SYNONYMS } from "./synonyms";
 import { parseQuery } from "./parse-query";
 
@@ -29,7 +37,8 @@ export type DirectoryMatch =
         | "city"
         | "company"
         | "bio"
-        | "expertise";
+        | "expertise"
+        | "role";
       label?: string;
     }
   | { kind: "similar"; query: string };
@@ -45,22 +54,6 @@ export type DirectoryRow = {
   image: string | null;
   match: DirectoryMatch | null;
 };
-
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function containsSearchTerm(value: string, term: string): boolean {
-  const normalizedTerm = term.toLowerCase();
-  if (normalizedTerm.length > 2) {
-    return value.toLowerCase().includes(normalizedTerm);
-  }
-
-  return new RegExp(
-    `(^|[^a-z0-9])${escapeRegex(normalizedTerm)}([^a-z0-9]|$)`,
-    "i",
-  ).test(value);
-}
 
 /**
  * Which field a query matched, in the deterministic order: group order (the
@@ -170,6 +163,42 @@ function buildGroupCondition(group: string): {
   return { exact, fuzzy };
 }
 
+/**
+ * The PEOPLE-01 profession filter. profiles.profession is new and mostly
+ * empty, so a member also matches on their job title or on one of their
+ * professional-role tags (vertical-interest tags never count). Same synonym
+ * expansion and short-term word anchoring as the main search, so "CA" finds
+ * "Chartered Accountancy" without matching inside "Advocate".
+ * matchProfessionFilter in profession-filter.ts is the same rule in code.
+ */
+function buildProfessionCondition(filter: string): SQL {
+  const fieldConds: SQL[] = [];
+  const tagConds: SQL[] = [];
+  for (const term of professionFilterTerms(filter)) {
+    if (term.kind === "word") {
+      fieldConds.push(
+        sql`lower(${tables.profiles.profession}) ~ ${term.pattern}`,
+        sql`lower(${tables.profiles.title}) ~ ${term.pattern}`,
+      );
+      tagConds.push(sql`lower(et.label) ~ ${term.pattern}`);
+    } else {
+      fieldConds.push(
+        ilike(tables.profiles.profession, term.pattern),
+        ilike(tables.profiles.title, term.pattern),
+      );
+      tagConds.push(sql`et.label ilike ${term.pattern}`);
+    }
+  }
+  const verticals = sql.join(
+    VERTICAL_INTEREST_LABELS.map((label) => sql`${label}`),
+    sql`, `,
+  );
+  return or(
+    ...fieldConds,
+    sql`exists (select 1 from ${tables.memberTags} mt join ${tables.expertiseTags} et on et.id = mt.tag_id where mt.user_id = ${tables.users.id} and et.label not in (${verticals}) and (${or(...tagConds)}))`,
+  )!;
+}
+
 /** Folded cities of approved members. Cached per request: the people page
  * needs them for both the city filter and reading a city out of the query. */
 const getApprovedCities = cache(async (): Promise<DirectoryCity[]> => {
@@ -259,24 +288,12 @@ export async function searchMembers(
   const groupCount = groupBuilt.length + (detectedCityCond ? 1 : 0);
 
   // Word search, not an exact-match filter (Sandeep, 21 Sep 2026): a member
-  // typing "tax" must find "Tax Advisor" and "US-India Tax Consultant", so
-  // this matches only the dedicated profession field, never the bio text or
-  // the expertise tags. Runs the same synonym expansion and short-term word
-  // boundary anchoring as the main q search above, so "CA" finds "Chartered
-  // Accountant" instead of matching inside "Advocate".
+  // typing "tax" must find "Tax Advisor" and "US-India Tax Consultant". It
+  // reads profession, title and professional-role tags, never the bio text
+  // (see buildProfessionCondition).
   const professionFilter = (input.profession ?? "").trim().slice(0, 120);
   const professionCond = professionFilter
-    ? or(
-        ...expandQuery(professionFilter).map((term) => {
-          if (term.trim().length <= 2) {
-            const boundaryPattern = `(^|[^[:alnum:]])${escapeRegex(
-              term.toLowerCase(),
-            )}([^[:alnum:]]|$)`;
-            return sql`lower(${tables.profiles.profession}) ~ ${boundaryPattern}`;
-          }
-          return ilike(tables.profiles.profession, `%${escapeLike(term)}%`);
-        }),
-      )!
+    ? buildProfessionCondition(professionFilter)
     : undefined;
 
   const tagCond = input.tagId
@@ -420,7 +437,11 @@ export async function searchMembers(
         company: r.company,
         tags,
         image: r.image,
-        match: q ? deriveMatch({ ...r, tags }, matchGroups, q) : null,
+        match: q
+          ? deriveMatch({ ...r, tags }, matchGroups, q)
+          : professionFilter
+            ? professionMatch({ ...r, tags }, professionFilter)
+            : null,
       };
     }),
     total,
@@ -428,6 +449,18 @@ export async function searchMembers(
     pageSize,
     interpretation: q ? { city: cityLabel, terms: textGroups, relaxed } : null,
   });
+}
+
+/** The result hint for a row found only through the profession filter. */
+function professionMatch(
+  row: { profession: string; title: string; tags: string[] },
+  filter: string,
+): DirectoryMatch | null {
+  const match = matchProfessionFilter(row, filter);
+  if (!match) return null;
+  return match.field === "role"
+    ? { kind: "field", field: "role", label: match.label }
+    : { kind: "field", field: match.field };
 }
 
 export type MemberProfileView = {
@@ -523,23 +556,57 @@ export async function getKnownProfessions(): Promise<DirectoryProfession[]> {
   return groupProfessions(rows.map((r) => r.profession));
 }
 
+/**
+ * Options for the PEOPLE-01 profession filter: the professional-role tags
+ * approved members hold, plus the professions they typed. Built only from
+ * real members, so no option comes back empty. The profile forms keep using
+ * getKnownProfessions, which suggests typed professions only.
+ */
+async function getProfessionFilterOptions(): Promise<DirectoryProfession[]> {
+  const [tagRows, professionRows] = await Promise.all([
+    db
+      .selectDistinct({ label: tables.expertiseTags.label })
+      .from(tables.memberTags)
+      .innerJoin(
+        tables.expertiseTags,
+        eq(tables.expertiseTags.id, tables.memberTags.tagId),
+      )
+      .innerJoin(tables.users, eq(tables.users.id, tables.memberTags.userId))
+      .where(eq(tables.users.status, "approved")),
+    db
+      .selectDistinct({ profession: tables.profiles.profession })
+      .from(tables.profiles)
+      .innerJoin(tables.users, eq(tables.users.id, tables.profiles.userId))
+      .where(eq(tables.users.status, "approved")),
+  ]);
+  return buildProfessionFilterOptions(
+    tagRows.map((r) => r.label),
+    professionRows.map((r) => r.profession),
+  );
+}
+
 /** Distinct cities, professions, and all expertise tags, for the PEOPLE-01 filters. */
 export async function getDirectoryFilters(viewer: Viewer | null): Promise<
   ActionResult<{
     cities: DirectoryCity[];
+    /** Typed professions only: the profile forms' typeahead. */
     professions: DirectoryProfession[];
+    /** The People profession filter's options (roles and professions). */
+    professionFilterOptions: DirectoryProfession[];
     tags: { id: string; label: string }[];
   }>
 > {
   const denied = memberAccessError(viewer);
   if (denied) return err(denied, "Member access is required.");
-  const [cities, professions, tags] = await Promise.all([
-    getApprovedCities(),
-    getKnownProfessions(),
-    db
-      .select({ id: tables.expertiseTags.id, label: tables.expertiseTags.label })
-      .from(tables.expertiseTags)
-      .orderBy(asc(tables.expertiseTags.label)),
-  ]);
-  return ok({ cities, professions, tags });
+  const [cities, professions, professionFilterOptions, tags] =
+    await Promise.all([
+      getApprovedCities(),
+      getKnownProfessions(),
+      getProfessionFilterOptions(),
+      db
+        .select({ id: tables.expertiseTags.id, label: tables.expertiseTags.label })
+        .from(tables.expertiseTags)
+        .orderBy(asc(tables.expertiseTags.label)),
+    ]);
+  return ok({ cities, professions, professionFilterOptions, tags });
 }

@@ -103,7 +103,7 @@ export default async function PeoplePage({
     );
   }
 
-  const { cities, professions, tags } = filtersRes.data;
+  const { cities, professionFilterOptions, tags } = filtersRes.data;
   // The URL carries the folded key ("pune"); show the member the tidy label.
   const cityKey = city.trim().toLowerCase();
   const cityLabel = cities.find((c) => c.value === cityKey)?.label ?? city;
@@ -201,11 +201,14 @@ export default async function PeoplePage({
                 type="search"
                 name="profession"
                 list="people-profession-options"
+                // Only the list below, which comes from real members. The
+                // browser's own saved entries offered words nobody matched.
+                autoComplete="off"
                 defaultValue={profession}
                 placeholder="For example, Tax Advisor"
               />
               <datalist id="people-profession-options">
-                {professions.map((p) => (
+                {professionFilterOptions.map((p) => (
                   <option key={p.value} value={p.label} />
                 ))}
               </datalist>
@@ -371,7 +374,9 @@ export default async function PeoplePage({
                           {member.match.kind === "field"
                             ? member.match.field === "expertise"
                               ? `Matched on expertise: ${member.match.label}`
-                              : `Matched on ${
+                              : member.match.field === "role"
+                                ? `Matched on role: ${member.match.label}`
+                                : `Matched on ${
                                   {
                                     name: "name",
                                     title: "title",
