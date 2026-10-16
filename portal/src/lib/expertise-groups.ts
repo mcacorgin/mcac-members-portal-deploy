@@ -17,6 +17,11 @@ export const VERTICAL_INTEREST_LABELS = [
 
 const verticalLabels = new Set<string>(VERTICAL_INTEREST_LABELS);
 
+/** True for a vertical-interest tag; every other tag is a professional role. */
+export function isVerticalInterestLabel(label: string): boolean {
+  return verticalLabels.has(label);
+}
+
 export type ExpertiseTagOption = { id: string; label: string };
 
 /**
@@ -36,7 +41,7 @@ export function groupExpertiseTags<T extends ExpertiseTagOption>(tags: T[]): {
   const verticals: T[] = [];
 
   for (const tag of tags) {
-    (verticalLabels.has(tag.label) ? verticals : professions).push(tag);
+    (isVerticalInterestLabel(tag.label) ? verticals : professions).push(tag);
   }
 
   return { professions, verticals };

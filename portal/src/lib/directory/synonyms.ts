@@ -42,6 +42,11 @@ export const SYNONYMS: Record<string, string[]> = {
   "erp": ["business analysis", "it advisory"],
   "audit": ["chartered accountant", "chartered accountancy"],
   "ca": ["chartered accountant", "chartered accountancy", "audit"],
+  // A "Consultant" title and the "Management Consulting" role tag share no
+  // substring, so link the word forms rather than fuzzy-matching stems.
+  "consultant": ["consulting", "consultancy"],
+  "consulting": ["consultant", "consultancy"],
+  "consultancy": ["consultant", "consulting"],
 };
 
 const MAX_TERMS = 6;
