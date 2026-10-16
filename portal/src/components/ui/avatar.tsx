@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { initialsOf } from "@/lib/initials";
 import { cx } from "./cx";
 
@@ -23,7 +23,10 @@ const sizeClasses: Record<AvatarSize, string> = {
   lg: "size-[54px] text-base",
 };
 
-/** 10px-radius avatar with initials fallback on navy. */
+/** 10px-radius avatar with initials on navy underneath and the photo on top.
+ * The photo never carries alt text, so a failed image cannot show a broken
+ * icon or wrapped text. Failures that happen before hydration are caught by
+ * checking the element after mount. */
 export function Avatar({
   name,
   src,
@@ -32,37 +35,47 @@ export function Avatar({
   decorative = false,
 }: AvatarProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
 
-  if (src && src !== failedSrc) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element -- avatar sources are user-supplied URLs; next/image needs domain allowlisting
-      <img
-        src={src}
-        alt={decorative ? "" : name}
-        loading="lazy"
-        decoding="async"
-        referrerPolicy="no-referrer"
-        onError={() => setFailedSrc(src)}
-        className={cx(
-          "flex-none rounded-avatar object-cover",
-          sizeClasses[size],
-          className,
-        )}
-      />
-    );
-  }
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img || !src || !img.complete) return;
+    if (img.naturalWidth === 0) setFailedSrc(src);
+    else setLoadedSrc(src);
+  }, [src]);
+
+  const showPhoto = Boolean(src) && src !== failedSrc;
+
   return (
     <span
       {...(decorative
         ? { "aria-hidden": true }
         : { role: "img", "aria-label": name })}
       className={cx(
-        "grid flex-none place-items-center rounded-avatar bg-navy font-semibold tracking-[0.02em] text-white",
+        "relative grid flex-none place-items-center overflow-hidden rounded-avatar bg-navy font-semibold tracking-[0.02em] text-white",
         sizeClasses[size],
         className,
       )}
     >
       {initialsOf(name)}
+      {showPhoto ? (
+        // eslint-disable-next-line @next/next/no-img-element -- avatar sources are user-supplied URLs; next/image needs domain allowlisting
+        <img
+          ref={imgRef}
+          src={src}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onLoad={() => setLoadedSrc(src ?? null)}
+          onError={() => setFailedSrc(src ?? null)}
+          className={cx(
+            "absolute inset-0 size-full object-cover",
+            loadedSrc === src ? "opacity-100" : "opacity-0",
+          )}
+        />
+      ) : null}
     </span>
   );
 }
