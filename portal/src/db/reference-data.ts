@@ -31,7 +31,6 @@ export const EXPERTISE_TAGS = [
   "Cybersecurity",
   "Real Estate — Industrial & Pre-leased",
   "Real Estate — Redevelopment",
-  "Asset Sales & Business Transfers",
   "Healthcare & Hospitals",
   "Pharma",
   "Auto Components",
@@ -40,4 +39,5 @@ export const EXPERTISE_TAGS = [
   "EPC & Infrastructure",
   "Logistics & Warehousing",
   "Banking & NBFC",
+  "Sector agnostic",
 ] as const;

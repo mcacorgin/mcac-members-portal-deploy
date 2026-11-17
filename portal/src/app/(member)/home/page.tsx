@@ -4,6 +4,8 @@ import { CaretDownIcon } from "@phosphor-icons/react/dist/ssr/CaretDown";
 import { MagnifyingGlassIcon } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass";
 import { NewspaperIcon } from "@phosphor-icons/react/dist/ssr/Newspaper";
 import { requireViewer } from "@/lib/auth";
+import { getConfig } from "@/lib/config";
+import { viewHint } from "@/lib/posts/view-hint";
 import { enabledSections, memberAccessError } from "@/lib/authz";
 import { resolveLandingPath } from "@/lib/account/routing";
 import { feedHref, feedViewParam, readFeedParams } from "@/lib/posts/feed-url";
@@ -106,7 +108,7 @@ export default async function HomePage({
     page: pageNum,
   } = params;
 
-  const [enabledTypes, result] = await Promise.all([
+  const [enabledTypes, result, opportunityDays, jobDays] = await Promise.all([
     enabledSections(viewer!.id),
     listFeed(viewer, {
       view,
@@ -117,6 +119,8 @@ export default async function HomePage({
       geography,
       page: pageNum,
     }),
+    getConfig("posts.opportunityExpiryDays"),
+    getConfig("posts.jobExpiryDays"),
   ]);
 
   const header = (
@@ -226,6 +230,12 @@ export default async function HomePage({
           </Link>
         ))}
       </nav>
+      <p
+        data-testid="home-view-hint"
+        className="mb-3 text-xs leading-snug text-ink-muted"
+      >
+        {viewHint(view, opportunityDays, jobDays)}
+      </p>
 
       {enabledTypes.length > 1 ? (
         <>

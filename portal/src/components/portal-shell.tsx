@@ -9,6 +9,9 @@ import {
   NOTIFICATION_TRAY_MAX,
 } from "@/lib/notifications/queries";
 import type { Viewer } from "@/lib/authz";
+import { db, tables } from "@/db";
+import { eq } from "drizzle-orm";
+import { ProfilePromptBanner } from "@/components/profile-prompt-banner";
 
 // Shared rail/header/tabs shell, extracted mechanically from the (member)
 // layout so member and admin pages render inside the same chrome (the
@@ -68,6 +71,11 @@ export function PortalShell({
           id="main"
           className="w-full flex-1 px-4 pt-6 pb-10 lg:px-9 lg:pb-14"
         >
+          {!isAdmin && viewer.status === "approved" ? (
+            <Suspense fallback={null}>
+              <ProfilePromptLoader userId={viewer.id} />
+            </Suspense>
+          ) : null}
           {children}
         </main>
 
@@ -96,6 +104,17 @@ async function NotificationMenuLoader({ viewer }: { viewer: Viewer }) {
       unread={preview.unread}
     />
   );
+}
+
+// Banner, not a gate: members missing a profession or a summary get a
+// dismissible nudge to /me/edit.
+async function ProfilePromptLoader({ userId }: { userId: string }) {
+  const profile = await db.query.profiles.findFirst({
+    where: eq(tables.profiles.userId, userId),
+    columns: { profession: true, bio: true },
+  });
+  if (profile && profile.profession.trim() && profile.bio.trim()) return null;
+  return <ProfilePromptBanner />;
 }
 
 function NotificationMenuPending() {

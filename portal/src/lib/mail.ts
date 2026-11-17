@@ -6,6 +6,8 @@ export type Mail = {
   to: string;
   subject: string;
   text: string;
+  // Stable per logical send; Resend drops a repeat with the same key (24 h).
+  idempotencyKey?: string;
 };
 
 export async function sendMail(mail: Mail): Promise<{ delivered: boolean }> {
@@ -29,6 +31,7 @@ export async function sendMail(mail: Mail): Promise<{ delivered: boolean }> {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        ...(mail.idempotencyKey ? { "Idempotency-Key": mail.idempotencyKey } : {}),
       },
       body: JSON.stringify({ from, to: mail.to, subject: mail.subject, text: mail.text }),
     });

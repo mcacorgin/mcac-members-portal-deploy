@@ -5,12 +5,15 @@ import { recordAudit } from "@/lib/audit";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
 import { buildXlsxWorkbook } from "@/lib/xlsx";
 import { communicationEmail } from "@/lib/account/preferred-contact-email";
+import { formatMemberNumber } from "@/lib/account/member-number-format";
+import { formatIsoDateIst } from "@/app/(admin)/format";
 
 // Member dataset export (MEMB-05, ADMIN-04). Exports are an admin surface,
 // so admin-visible fields are included; every cell is sanitized against
 // spreadsheet formula injection before it reaches CSV or Excel.
 
 const HEADERS = [
+  "Member number",
   "Name",
   "Email",
   "MCAC communication email",
@@ -35,6 +38,7 @@ async function exportRows(): Promise<string[][]> {
   const rows = await db
     .select({
       id: tables.users.id,
+      memberNumber: tables.users.memberNumber,
       name: tables.users.name,
       email: tables.users.email,
       preferredContactEmail: tables.users.preferredContactEmail,
@@ -53,7 +57,7 @@ async function exportRows(): Promise<string[][]> {
     .from(tables.users)
     .leftJoin(tables.profiles, eq(tables.profiles.userId, tables.users.id))
     .where(eq(tables.users.status, "approved"))
-    .orderBy(asc(tables.users.name));
+    .orderBy(asc(tables.users.memberNumber), asc(tables.users.name));
 
   const tagRows = await db
     .select({
@@ -71,6 +75,7 @@ async function exportRows(): Promise<string[][]> {
 
   return rows.map((r) =>
     [
+      formatMemberNumber(r.memberNumber) ?? "",
       r.name,
       r.email,
       communicationEmail(r),
@@ -84,7 +89,7 @@ async function exportRows(): Promise<string[][]> {
       r.phoneVisibility ?? "",
       r.emailVisibility ?? "",
       r.linkedinVisibility ?? "",
-      r.createdAt.toISOString().slice(0, 10),
+      formatIsoDateIst(r.createdAt),
     ].map(sanitizeCell),
   );
 }

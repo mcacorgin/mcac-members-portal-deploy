@@ -99,6 +99,20 @@
       "when": 1790541689782,
       "tag": "0013_add_profile_profession",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792540800000,
+      "tag": "0014_add_member_number",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792627200000,
+      "tag": "0015_retire_asset_sales_add_sector_agnostic",
+      "breakpoints": true
     }
   ]
 }

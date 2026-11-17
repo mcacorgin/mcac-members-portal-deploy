@@ -88,10 +88,14 @@ export const users = pgTable(
     // Set on password reset; JWTs issued before this instant are rejected,
     // so a stolen session dies when the owner resets credentials.
     credentialsChangedAt: timestamp("credentials_changed_at", { mode: "date" }),
+    // Sequential MCAC member number, shown as MCAC001 (tracker row 56).
+    // Assigned once, on first approval, and never reused or renumbered.
+    memberNumber: integer("member_number"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().default(utcNow),
   },
   (t) => [
     uniqueIndex("users_email_idx").on(t.email),
+    uniqueIndex("users_member_number_idx").on(t.memberNumber),
     check(
       "users_preferred_contact_email_pair_check",
       sql`(${t.preferredContactEmail} is null) = (${t.preferredContactEmailVerifiedAt} is null)`,

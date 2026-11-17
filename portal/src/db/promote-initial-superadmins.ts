@@ -6,6 +6,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as tables from "./schema";
+import { assignMemberNumber } from "../lib/account/member-number";
 
 function required(name: string): string {
   const value = process.env[name]?.trim();
@@ -93,7 +94,12 @@ async function main() {
     }
 
     await db.transaction(async (tx) => {
-      for (const user of users) {
+      // Update both rows first, in id order, and only then take the
+      // numbering lock. A normal approval locks its user row before the same
+      // lock, so taking the lock between the two row updates could deadlock
+      // with an admin approving the second account at the same moment.
+      const ordered = [...users].sort((a, b) => a.id.localeCompare(b.id));
+      for (const user of ordered) {
         await tx
           .update(tables.users)
           .set({
@@ -103,6 +109,12 @@ async function main() {
             statusChangedAt: new Date(),
           })
           .where(eq(tables.users.id, user.id));
+      }
+      for (const user of ordered) {
+        // Same rule as the normal approval path (transitionAccount): a
+        // first approval gets the next member number; an account that
+        // already has one keeps it.
+        await assignMemberNumber(tx, user.id);
         await tx.insert(tables.auditLog).values({
           actorId: null,
           action: "account.initial_superadmin_promotion",

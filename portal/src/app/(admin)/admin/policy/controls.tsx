@@ -155,6 +155,35 @@ export function SignInControl({ initial }: { initial: boolean }) {
   );
 }
 
+export function ApplicationReminderControl({ initial }: { initial: boolean }) {
+  const { save, state, pending } = useConfigSave();
+  const [value, setValue] = useState(initial);
+
+  return (
+    <Card>
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-base font-semibold text-ink">Applications</h2>
+        <SaveIndicator state={state} />
+      </div>
+      <Checkbox
+        label="Remind applicants sent back for changes"
+        description="Sends one reminder email to an applicant who has not updated their application 7 days after an admin asked for changes. Applications sent back more than 30 days ago are not reminded."
+        checked={value}
+        disabled={pending}
+        data-testid="needs-changes-reminder-toggle"
+        onChange={(event) => {
+          const next = event.target.checked;
+          const previous = value;
+          setValue(next);
+          save("applications.needsChangesReminderEnabled", next, () =>
+            setValue(previous),
+          );
+        }}
+      />
+    </Card>
+  );
+}
+
 // --- Contact defaults ---------------------------------------------------------
 
 const VISIBILITY_OPTIONS = [
