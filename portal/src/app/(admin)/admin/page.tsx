@@ -14,6 +14,29 @@ import { CheckIcon } from "@phosphor-icons/react/dist/ssr/Check";
 
 export const metadata = { title: "Admin overview - MCAC Members Portal" };
 
+// The reason an admin gave when sending an application back. Shown in the
+// queue so admins can see what each applicant was asked to fix without
+// opening every application.
+function ChangesReason({
+  reason,
+  sentBackAt,
+  className,
+}: {
+  reason: string;
+  sentBackAt: Date | null;
+  className?: string;
+}) {
+  return (
+    <p
+      data-testid="queue-changes-reason"
+      className={`text-xs leading-snug text-ink-secondary [overflow-wrap:anywhere] ${className ?? ""}`}
+    >
+      <span className="font-medium text-ink">Changes requested</span>
+      {sentBackAt ? ` (${formatDate(sentBackAt)})` : ""}: {reason}
+    </p>
+  );
+}
+
 const STATS = [
   { key: "pendingCount", label: "Pending review", testId: "stat-pending" },
   {
@@ -133,6 +156,13 @@ export default async function AdminOverviewPage() {
                         </dd>
                       </div>
                     </dl>
+                    {row.changesReason ? (
+                      <ChangesReason
+                        reason={row.changesReason}
+                        sentBackAt={row.sentBackAt}
+                        className="mt-3"
+                      />
+                    ) : null}
                     <span className="mt-4 flex min-h-tap items-center justify-between border-t border-border pt-3 font-semibold text-navy-text">
                       Review application
                       <span aria-hidden="true">&rarr;</span>
@@ -176,7 +206,7 @@ export default async function AdminOverviewPage() {
                     <td className="px-4 py-2.5 whitespace-nowrap text-ink-secondary">
                       {formatDate(row.createdAt)}
                     </td>
-                    <td className="px-4 py-2.5">
+                    <td className="max-w-[18rem] px-4 py-2.5 align-top">
                       <StatusBadge
                         status={
                           row.status === "needs_changes"
@@ -184,6 +214,13 @@ export default async function AdminOverviewPage() {
                             : "pending"
                         }
                       />
+                      {row.changesReason ? (
+                        <ChangesReason
+                          reason={row.changesReason}
+                          sentBackAt={row.sentBackAt}
+                          className="mt-1.5"
+                        />
+                      ) : null}
                     </td>
                     <td className="px-4 py-2.5">
                       {row.consented ? (

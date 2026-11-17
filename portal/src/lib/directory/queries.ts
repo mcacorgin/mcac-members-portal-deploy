@@ -1,3 +1,4 @@
+import { formatMemberNumber } from "@/lib/account/member-number-format";
 import { cache } from "react";
 import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { db, tables } from "@/db";
@@ -472,6 +473,8 @@ export type MemberProfileView = {
   profession: string;
   company: string;
   bio: string;
+  /** Formatted MCAC member number (MCAC001), or null if none yet. */
+  memberNumber: string | null;
   tags: string[];
   contact: ProjectedContact;
   isSelf: boolean;
@@ -491,6 +494,7 @@ export async function getMemberProfile(
       image: tables.users.image,
       email: tables.users.email,
       status: tables.users.status,
+      memberNumber: tables.users.memberNumber,
       city: tables.profiles.city,
       title: tables.profiles.title,
       profession: tables.profiles.profession,
@@ -533,6 +537,7 @@ export async function getMemberProfile(
     profession: member.profession,
     company: member.company,
     bio: member.bio,
+    memberNumber: formatMemberNumber(member.memberNumber),
     tags: tagRows.map((t) => t.label),
     contact: projectContact(viewer!, { ...member, userId: member.id }),
     isSelf,

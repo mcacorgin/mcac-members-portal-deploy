@@ -9,6 +9,7 @@ import {
   ContactDefaultsControl,
   OpportunitiesControl,
   SectionsControl,
+  ApplicationReminderControl,
   SignInControl,
 } from "./controls";
 
@@ -33,6 +34,7 @@ export default async function PolicyPage() {
     sectionJob,
     sectionKnowledge,
     sectionEvent,
+    needsChangesReminder,
   ] = await Promise.all([
     getConfig("brand.goldPresence"),
     getConfig("auth.emailFallbackEnabled"),
@@ -45,6 +47,7 @@ export default async function PolicyPage() {
     getConfig("sections.job"),
     getConfig("sections.knowledge"),
     getConfig("sections.event"),
+    getConfig("applications.needsChangesReminderEnabled"),
   ]);
 
   return (
@@ -72,6 +75,7 @@ export default async function PolicyPage() {
           expiryDays={expiryDays}
           adminOverridable={expiryOverridable}
         />
+        <ApplicationReminderControl initial={needsChangesReminder} />
         <SignInControl initial={emailFallbackEnabled} />
         <BrandControl initial={goldPresence} />
       </div>

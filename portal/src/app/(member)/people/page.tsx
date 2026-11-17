@@ -354,9 +354,12 @@ export default async function PeoplePage({
                     href={`/people/${member.id}`}
                     className="ui-member-result flex min-h-tap items-center gap-3 px-3.5 py-3 hover:bg-surface-subtle focus-visible:outline-offset-[-2px]"
                   >
+                    {/* Tracker row 59: bigger photos in the People list,
+                        matching the larger author photos on posts. */}
                     <Avatar
                       name={member.name}
                       src={member.image ?? undefined}
+                      size="lg"
                       className="ui-member-avatar"
                       decorative
                     />

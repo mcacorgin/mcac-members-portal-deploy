@@ -12,6 +12,7 @@ import {
   type OutboxEventName,
 } from "@/lib/outbox";
 import { recordAudit } from "@/lib/audit";
+import { assignMemberNumber } from "@/lib/account/member-number";
 import { ok, err, type ActionResult } from "@/lib/contracts/result";
 
 // Account lifecycle transitions (docs/build/state-machines.md). The ONLY
@@ -101,6 +102,10 @@ export async function transitionAccount(
         statusChangedAt: new Date(),
       })
       .where(eq(tables.users.id, subject.id));
+
+    // Tracker row 56: every member gets a number on first approval. A
+    // re-approved (unsuspended) member keeps the number they had.
+    if (input.to === "approved") await assignMemberNumber(tx, subject.id);
 
     const enabled =
       input.to === "approved" ? await enabledSections(subject.id, tx) : undefined;

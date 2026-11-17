@@ -16,7 +16,11 @@ const securityHeaders = [
         process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""
       }`,
       "style-src 'self' 'unsafe-inline'",
-      "upgrade-insecure-requests",
+      // Safari upgrades http://localhost to https and then fails to load
+      // scripts, so the directive is production only (same as unsafe-eval).
+      ...(process.env.NODE_ENV === "development"
+        ? []
+        : ["upgrade-insecure-requests"]),
     ].join("; "),
   },
   { key: "X-Frame-Options", value: "DENY" },

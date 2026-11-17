@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { and, asc, eq, isNull, lt } from "drizzle-orm";
 import { db, tables } from "@/db";
 import { sendMail } from "@/lib/mail";
@@ -8,6 +9,8 @@ import {
 } from "@/lib/notifications/section-labels";
 import type { PostTypeName } from "@/lib/posts/types";
 import { communicationEmail } from "@/lib/account/preferred-contact-email";
+import { sendBackKey } from "@/lib/account/needs-changes-reminder";
+import { getConfig } from "@/lib/config";
 
 // Outbox consumer (docs/build/events.md). Producers write in-app notification
 // rows transactionally; this worker delivers the matching EMAILS (NOTF-02).
@@ -15,6 +18,22 @@ import { communicationEmail } from "@/lib/account/preferred-contact-email";
 // which is acceptable for this trigger set. Events failing 5 times are parked.
 
 const MAX_ATTEMPTS = 5;
+
+// Same key on every retry of the same mail, so a crash after delivery does not
+// send it twice.
+// Keyed on the event plus the mail content (to, subject, text). Resend rejects
+// a reused key that carries a different payload, so the key must change when
+// the payload does: shared addresses or a changed recipient list cannot clash.
+export function outboxIdempotencyKey(
+  eventId: number,
+  mail: { to: string; subject: string; text: string },
+): string {
+  const h = createHash("sha256")
+    .update(JSON.stringify([mail.to.trim().toLowerCase(), mail.subject, mail.text]))
+    .digest("hex")
+    .slice(0, 32);
+  return `outbox-${eventId}-${h}`;
+}
 
 type OutboxRow = typeof tables.outboxEvents.$inferSelect;
 
@@ -63,6 +82,41 @@ export async function buildOutboxEmails(
           to: u.email,
           subject: "Your MCAC application needs changes",
           text: `Hello ${u.name},\n\nAn administrator reviewed your application and requested changes:\n\n${String(p.reason ?? "")}\n\nSign in to update and resubmit:\n${base}/application/status\n`,
+        },
+      ];
+    }
+    case "account.needs_changes_reminder": {
+      // Re-check at send time, including every retry: skip if an admin has
+      // switched the reminder off since it was queued (the event is then
+      // closed without an email, so switching off cancels queued reminders),
+      // or if the applicant has since resubmitted, been decided, or been sent
+      // back again (a newer send-back has its own reminder).
+      if (!(await getConfig("applications.needsChangesReminderEnabled")))
+        return [];
+      const u = await db.query.users.findFirst({
+        where: eq(tables.users.id, String(p.userId)),
+        columns: {
+          email: true,
+          preferredContactEmail: true,
+          preferredContactEmailVerifiedAt: true,
+          name: true,
+          status: true,
+          statusReason: true,
+          statusChangedAt: true,
+        },
+      });
+      if (
+        !u ||
+        u.status !== "needs_changes" ||
+        !u.statusChangedAt ||
+        sendBackKey(u.statusChangedAt) !== String(p.sentBackAt)
+      )
+        return [];
+      return [
+        {
+          to: communicationEmail(u),
+          subject: "Reminder: your MCAC application needs changes",
+          text: `Hello ${u.name},\n\nA week ago an MCAC administrator asked for a few changes to your application:\n\n${u.statusReason ?? ""}\n\nYour application stays on hold until you update it. Sign in to update and resubmit:\n${base}/application/status\n\nThis is the only reminder we will send.\n`,
         },
       ];
     }
@@ -223,7 +277,10 @@ export async function processOutboxEvent(
     try {
       const mails = await buildOutboxEmails(row);
       for (const mail of mails) {
-        const result = await sendMail(mail);
+        const result = await sendMail({
+          ...mail,
+          idempotencyKey: outboxIdempotencyKey(row.id, mail),
+        });
         if (!result.delivered) {
           throw new Error(`mail delivery failed for event ${row.id} (${row.name})`);
         }

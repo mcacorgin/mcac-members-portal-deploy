@@ -73,6 +73,19 @@ export default async function SignInPage({
             <PendingButton pendingLabel="Connecting to LinkedIn...">
               Continue with LinkedIn
             </PendingButton>
+            {/* Tracker row 57: members kept looking for an MCAC password.
+                Say plainly that LinkedIn is the whole sign-in. Hidden while
+                the email fallback is on, because then a password exists. */}
+            {emailSignInEnabled ? null : (
+              <p
+                data-testid="no-password-note"
+                className="mt-2.5 text-sm text-ink-secondary"
+              >
+                You do not need a separate MCAC password. Sign in with your
+                LinkedIn account; the first time, LinkedIn asks you to allow
+                MCAC.
+              </p>
+            )}
           </form>
         ) : (
           <p className="rounded-control bg-surface-subtle px-3 py-2.5 text-sm text-ink-secondary">

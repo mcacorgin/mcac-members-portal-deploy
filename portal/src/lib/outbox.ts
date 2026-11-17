@@ -7,6 +7,7 @@ import { tables, type DbOrTx } from "@/db";
 export type OutboxEventName =
   | "account.approved"
   | "account.needs_changes"
+  | "account.needs_changes_reminder"
   | "account.rejected"
   | "post.tagged"
   | "post.comment"

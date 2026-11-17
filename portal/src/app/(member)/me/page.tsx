@@ -25,6 +25,7 @@ import {
 import { type VisibilityChoice } from "./visibility-form";
 import { ConnectLinkedInForm } from "./connect-linkedin-form";
 import { signOutAction } from "./actions";
+import { formatMemberNumber } from "@/lib/account/member-number-format";
 
 // HOME-04: a calm, view-first read of your own profile, contact-visibility
 // choices, and account actions - editing and Saved each got their own
@@ -66,7 +67,7 @@ export default async function MePage({
   const { linkError } = await searchParams;
   const linkErrorCode = Array.isArray(linkError) ? linkError[0] : linkError;
 
-  const [profile, myTagRows, filtersRes, linkedIn, emailState] = await Promise.all([
+  const [profile, myTagRows, filtersRes, linkedIn, emailState, numberRow] = await Promise.all([
     db.query.profiles.findFirst({
       where: eq(tables.profiles.userId, viewer.id),
     }),
@@ -76,7 +77,12 @@ export default async function MePage({
     getDirectoryFilters(viewer),
     isLinkedInLinked(viewer.id),
     getPreferredContactEmailState(viewer.id),
+    db.query.users.findFirst({
+      where: eq(tables.users.id, viewer.id),
+      columns: { memberNumber: true },
+    }),
   ]);
+  const memberNumber = formatMemberNumber(numberRow?.memberNumber);
 
   // OAuth providers can return a stale error parameter after the account was
   // already linked successfully. The stored account link is authoritative;
@@ -186,6 +192,15 @@ export default async function MePage({
               <p className="truncate text-[0.8125rem] text-[#c3cfdf]">{summaryLine}</p>
             ) : null}
             <p className="text-[0.8125rem] text-[#c3cfdf]">{visibilitySummary}</p>
+            {memberNumber ? (
+              <p
+                data-testid="member-number"
+                className="text-[0.8125rem] text-[#c3cfdf]"
+              >
+                Member number{" "}
+                <span className="font-semibold text-white">{memberNumber}</span>
+              </p>
+            ) : null}
           </div>
         </div>
         <Button
@@ -210,6 +225,38 @@ export default async function MePage({
         </span>
         <span className="inline-flex items-center gap-1 font-medium text-navy-text">
           View saved
+          <CaretRightIcon size={16} aria-hidden="true" />
+        </span>
+      </Link>
+
+      <Link
+        href="/about"
+        className="flex min-h-[64px] items-center justify-between gap-3 rounded-container border border-border bg-surface px-3.5 py-3 hover:border-border-strong active:bg-surface-subtle"
+      >
+        <span>
+          <strong className="block font-semibold text-ink">About</strong>
+          <small className="block text-[0.8125rem] text-ink-secondary">
+            About MCAC and the portal
+          </small>
+        </span>
+        <span className="inline-flex items-center gap-1 font-medium text-navy-text">
+          Read about
+          <CaretRightIcon size={16} aria-hidden="true" />
+        </span>
+      </Link>
+
+      <Link
+        href="/help"
+        className="flex min-h-[64px] items-center justify-between gap-3 rounded-container border border-border bg-surface px-3.5 py-3 hover:border-border-strong active:bg-surface-subtle"
+      >
+        <span>
+          <strong className="block font-semibold text-ink">Help</strong>
+          <small className="block text-[0.8125rem] text-ink-secondary">
+            Help for members
+          </small>
+        </span>
+        <span className="inline-flex items-center gap-1 font-medium text-navy-text">
+          Get help
           <CaretRightIcon size={16} aria-hidden="true" />
         </span>
       </Link>

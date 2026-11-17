@@ -20,6 +20,9 @@ const registry = {
   "posts.opportunityExpiryDays": z.number().int().min(1).default(60),
   "posts.jobExpiryDays": z.number().int().min(1).default(60),
   "posts.expiryAdminOverridable": z.boolean().default(true),
+  // Tracker row 67: one reminder email to applicants sent back for changes.
+  // Off until the council approves it; switched on in Admin -> Policy.
+  "applications.needsChangesReminderEnabled": z.boolean().default(false),
   // Global section toggles (CONT-04); per-member overrides live in
   // member_section_overrides.
   "sections.opportunity": z.boolean().default(true),

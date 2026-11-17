@@ -47,7 +47,7 @@ export default async function PendingPage() {
     <div className="grid gap-4">
       <PageHeader
         title="Your application is with MCAC"
-        description="An MCAC admin will review it. You can use the portal once they approve you."
+        description="Thank you for applying. An MCAC admin will review your application and communicate with you."
         action={<ScreenId id="AUTH-05" />}
         className="mb-1"
       />

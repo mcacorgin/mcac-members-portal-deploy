@@ -415,8 +415,9 @@ html[data-ui="polished"] .ui-member-result:active {
 }
 
 html[data-ui="polished"] .ui-member-avatar {
-  width: 2.875rem !important;
-  height: 2.875rem !important;
+  /* 56px: up from 46px (tracker row 59, bigger People photos). */
+  width: 3.5rem !important;
+  height: 3.5rem !important;
   border: 2px solid oklch(1 0 0 / 0.9);
   box-shadow: 0 0 0 1px var(--color-border);
 }

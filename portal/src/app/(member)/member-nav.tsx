@@ -6,7 +6,9 @@ import type { Icon } from "@phosphor-icons/react";
 import { BookmarkSimpleIcon } from "@phosphor-icons/react/dist/csr/BookmarkSimple";
 import { GearSixIcon } from "@phosphor-icons/react/dist/csr/GearSix";
 import { HouseIcon } from "@phosphor-icons/react/dist/csr/House";
+import { InfoIcon } from "@phosphor-icons/react/dist/csr/Info";
 import { PlusIcon } from "@phosphor-icons/react/dist/csr/Plus";
+import { QuestionIcon } from "@phosphor-icons/react/dist/csr/Question";
 import { UserCircleIcon } from "@phosphor-icons/react/dist/csr/UserCircle";
 import { UsersThreeIcon } from "@phosphor-icons/react/dist/csr/UsersThree";
 import { cx } from "@/components/ui";
@@ -14,7 +16,8 @@ import { cx } from "@/components/ui";
 // The frozen four-tab IA (Home · People · Post · Me) still governs the
 // mobile tab bar exactly - `TAB_ITEMS` never grows. The desktop rail has more
 // room, so it also carries Saved (`RAIL_ITEMS`): mobile members reach it
-// instead through a link row near the top of /me. `match` prefixes drive the
+// instead through a link row near the top of /me. About and Help follow the
+// same rule (rail on desktop, link rows on /me for mobile). `match` prefixes drive the
 // active state (e.g. /posts and /notifications live under Home, /me/edit
 // lives under Me, as in the approved prototype).
 
@@ -58,13 +61,26 @@ const ME: NavItem = {
   match: ["/me"],
 };
 
+const ABOUT: NavItem = {
+  label: "About",
+  href: "/about",
+  icon: InfoIcon,
+  match: ["/about"],
+};
+const HELP: NavItem = {
+  label: "Help",
+  href: "/help",
+  icon: QuestionIcon,
+  match: ["/help"],
+};
+
 const TAB_ITEMS: NavItem[] = [HOME, PEOPLE, SHARE, ME];
 // Saved sits after Share (not between People and Share): Share is the one
 // button-styled action in the rail, so grouping Home/People as "browse" and
 // Saved/Me as "your stuff" around it keeps that emphasis intact
 // (better-layout: group with space/purpose, not by inserting a plain item
 // next to the one item styled as a call to action).
-const RAIL_ITEMS: NavItem[] = [HOME, PEOPLE, SHARE, SAVED, ME];
+const RAIL_ITEMS: NavItem[] = [HOME, PEOPLE, SHARE, SAVED, ME, ABOUT, HELP];
 
 function isActive(pathname: string, item: NavItem): boolean {
   return item.match.some(

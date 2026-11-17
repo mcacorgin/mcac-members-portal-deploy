@@ -42,6 +42,10 @@ export type ReviewQueueRow = {
   createdAt: Date;
   city: string;
   consented: boolean;
+  /** The reason sent to the applicant when an admin asked for changes. */
+  changesReason: string | null;
+  /** When the application was sent back (needs_changes only). */
+  sentBackAt: Date | null;
 };
 
 export async function listReviewQueue(
@@ -57,6 +61,8 @@ export async function listReviewQueue(
         name: tables.users.name,
         email: tables.users.email,
         status: tables.users.status,
+        statusReason: tables.users.statusReason,
+        statusChangedAt: tables.users.statusChangedAt,
         createdAt: tables.users.createdAt,
         city: tables.profiles.city,
       })
@@ -93,6 +99,10 @@ export async function listReviewQueue(
       createdAt: r.createdAt,
       city: r.city ?? "",
       consented: consented.has(r.id),
+      changesReason:
+        r.status === "needs_changes" && r.statusReason ? r.statusReason : null,
+      sentBackAt:
+        r.status === "needs_changes" ? (r.statusChangedAt ?? null) : null,
     })),
   );
 }

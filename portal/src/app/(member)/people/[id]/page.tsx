@@ -128,6 +128,17 @@ export default async function MemberProfilePage({
           {subtitle ? (
             <p className="mb-3 text-ink-secondary">{subtitle}</p>
           ) : null}
+          {profile.memberNumber ? (
+            <p
+              data-testid="member-number"
+              className="mb-3 text-sm text-ink-muted"
+            >
+              Member number{" "}
+              <span className="font-medium text-ink-secondary">
+                {profile.memberNumber}
+              </span>
+            </p>
+          ) : null}
           {profile.tags.length > 0 ? (
             <div className="mb-3 flex flex-wrap items-center gap-1.5">
               {profile.tags.slice(0, VISIBLE_TAGS).map((label) => (

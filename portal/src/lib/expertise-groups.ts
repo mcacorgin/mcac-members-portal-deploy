@@ -13,6 +13,7 @@ export const VERTICAL_INTEREST_LABELS = [
   "EPC & Infrastructure",
   "Logistics & Warehousing",
   "Banking & NBFC",
+  "Sector agnostic",
 ] as const;
 
 const verticalLabels = new Set<string>(VERTICAL_INTEREST_LABELS);
