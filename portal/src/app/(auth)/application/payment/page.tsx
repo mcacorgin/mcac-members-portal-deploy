@@ -5,6 +5,8 @@ import { requireViewer } from "@/lib/auth";
 import { resolveLandingPath } from "@/lib/account/routing";
 import { Card, PageHeader, StatusBadge } from "@/components/ui";
 import { PaymentDetails } from "@/components/membership-fee";
+import { OptionalConsentsForm } from "@/components/optional-consents-form";
+import { getOptionalConsents } from "@/lib/account/registration";
 import { PendingButton } from "../../_components/pending-button";
 import { signOutAction } from "../../actions";
 import { checkStatusAction } from "../pending/actions";
@@ -24,10 +26,13 @@ export default async function PaymentPage() {
   const landing = await resolveLandingPath(viewer);
   if (landing !== "/application/payment") redirect(landing);
 
-  const row = await db.query.users.findFirst({
-    where: eq(tables.users.id, viewer.id),
-    columns: { memberNumber: true },
-  });
+  const [row, consentChoices] = await Promise.all([
+    db.query.users.findFirst({
+      where: eq(tables.users.id, viewer.id),
+      columns: { memberNumber: true },
+    }),
+    getOptionalConsents(viewer),
+  ]);
   const returning = row?.memberNumber != null;
 
   return (
@@ -81,6 +86,15 @@ export default async function PaymentPage() {
           </a>
           .
         </p>
+      </Card>
+      {/* Privacy notice section 10: withdrawal must stay reachable in every state. */}
+      <Card className="grid gap-3 p-5">
+        <h2 className="text-base font-semibold text-ink">Community updates</h2>
+        <p className="text-[0.8125rem] text-ink-secondary">
+          Optional community updates from the privacy notice. Change this at
+          any time, whether or not you have paid.
+        </p>
+        <OptionalConsentsForm choices={consentChoices} />
       </Card>
     </div>
   );

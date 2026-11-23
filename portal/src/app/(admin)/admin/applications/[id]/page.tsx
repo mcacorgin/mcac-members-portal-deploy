@@ -138,7 +138,11 @@ export default async function ApplicationDetailPage({
                   <dd className="text-ink">
                     {formatDate(record.membershipPaidAt)}
                     {record.membershipValidUntil
-                      ? `, valid until ${formatDate(record.membershipValidUntil)}`
+                      ? `, valid until ${formatDate(record.membershipValidUntil)}${
+                          record.membershipValidUntil < new Date()
+                            ? " (ended)"
+                            : ""
+                        }`
                       : ""}
                   </dd>
                 </div>
@@ -326,6 +330,7 @@ export default async function ApplicationDetailPage({
             userId={record.id}
             applicantName={record.name || "Unnamed applicant"}
             status={record.status}
+            statusChangedAt={record.statusChangedAt?.toISOString() ?? ""}
             acceptedCurrent={record.consent.acceptedCurrent}
             evidence={evidence}
           />

@@ -33,8 +33,10 @@ export function FeeSteps() {
 const BANK_ROWS: [string, keyof typeof PAYMENT_DETAILS][] = [
   ["Account name", "accountName"],
   ["Bank", "bankName"],
+  ["Account type", "accountType"],
   ["Account number", "accountNumber"],
   ["IFSC", "ifsc"],
+  ["Branch", "branch"],
   ["UPI ID", "upiId"],
 ];
 
@@ -65,8 +67,8 @@ export function PaymentDetails() {
             <img
               src={PAYMENT_DETAILS.qrImagePath}
               alt="MCAC UPI QR code. Scan it in any UPI app."
-              width={160}
-              height={160}
+              width={200}
+              height={200}
               className="rounded-control border border-border bg-white"
             />
           ) : null}

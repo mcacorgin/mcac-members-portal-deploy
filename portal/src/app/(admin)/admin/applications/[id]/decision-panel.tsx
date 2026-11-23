@@ -60,12 +60,15 @@ export function DecisionPanel({
   userId,
   applicantName,
   status,
+  statusChangedAt,
   acceptedCurrent,
   evidence,
 }: {
   userId: string;
   applicantName: string;
   status: Status;
+  /** ISO time of the last status change, or "" if none; sent back to catch stale pages. */
+  statusChangedAt: string;
   acceptedCurrent: boolean;
   evidence: { complete: boolean; missing: string[] };
 }) {
@@ -101,7 +104,7 @@ export function DecisionPanel({
     setReasonError(null);
     setSuccess(null);
     startTransition(async () => {
-      const result = await decideAction(userId, to, withReason);
+      const result = await decideAction(userId, to, withReason, status, statusChangedAt);
       if (!result.ok) {
         const nextReasonError = result.fieldErrors?.reason?.[0] ?? null;
         setReasonError(nextReasonError);

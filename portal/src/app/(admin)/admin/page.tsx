@@ -57,6 +57,11 @@ const STATS = [
   },
   { key: "memberCount", label: "Approved members", testId: "stat-members" },
   { key: "suspendedCount", label: "Suspended", testId: "stat-suspended" },
+  {
+    key: "paidYearEndedCount",
+    label: "Paid year ended",
+    testId: "stat-paid-year-ended",
+  },
 ] as const;
 
 export default async function AdminOverviewPage() {
@@ -77,7 +82,7 @@ export default async function AdminOverviewPage() {
       />
 
       {overview.ok ? (
-        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {STATS.map((stat) => (
             <Card
               key={stat.key}

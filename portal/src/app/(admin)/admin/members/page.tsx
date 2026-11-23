@@ -220,6 +220,17 @@ export default async function MembersPage({
                       </td>
                       <td className="px-4 py-2.5">
                         <StatusBadge status={BADGE[row.status]} />
+                        {row.membershipValidUntil ? (
+                          <p
+                            data-testid="paid-until"
+                            className="mt-1 whitespace-nowrap text-xs text-ink-muted"
+                          >
+                            Paid until {formatDate(row.membershipValidUntil)}
+                            {row.membershipValidUntil < new Date()
+                              ? " (ended)"
+                              : ""}
+                          </p>
+                        ) : null}
                       </td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-ink-secondary">
                         {formatDate(row.createdAt)}

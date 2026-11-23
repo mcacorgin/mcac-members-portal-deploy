@@ -13,6 +13,7 @@ import {
   NoticeBody,
   NoticeStageBadge,
 } from "@/components/privacy/notice-body";
+import { PaymentDetails } from "@/components/membership-fee";
 import { AcceptForm } from "./accept-form";
 
 export const metadata = { title: "Privacy notice - MCAC Members Portal" };
@@ -43,6 +44,8 @@ export default async function PrivacyPage() {
         />
       ) : (
         <>
+          {/* Re-authorization while the fee is due: show how to pay up front. */}
+          {viewer.status === "awaiting_payment" ? <PaymentDetails /> : null}
           <Card className="grid gap-5 p-5 sm:p-6">
             <NoticeStageBadge body={notice.body} />
 
