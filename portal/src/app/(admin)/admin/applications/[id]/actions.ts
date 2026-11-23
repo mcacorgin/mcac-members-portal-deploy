@@ -29,11 +29,19 @@ export async function decideAction(
   userId: string,
   to: Viewer["status"],
   reason?: string,
+  from?: Viewer["status"],
+  seenChangedAt?: string,
 ): Promise<ActionResult<{ status: Viewer["status"] }>> {
+  // Server-action arguments are untrusted at runtime.
+  if (
+    (from !== undefined && typeof from !== "string") ||
+    (seenChangedAt !== undefined && typeof seenChangedAt !== "string")
+  )
+    return err("validation", "Unknown current status.");
   const viewer = await requireViewer();
   const result = await transitionAccount(
     viewer,
-    { userId, to, reason },
+    { userId, to, reason, from, seenChangedAt },
     scheduleOutboxDelivery,
   );
   if (result.ok) revalidateAdmin(userId);

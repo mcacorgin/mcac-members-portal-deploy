@@ -16,7 +16,13 @@ export type Viewer = {
   email: string;
   image: string | null;
   role: "member" | "admin" | "superadmin";
-  status: "pending" | "approved" | "rejected" | "needs_changes" | "suspended";
+  status:
+    | "pending"
+    | "approved"
+    | "rejected"
+    | "needs_changes"
+    | "suspended"
+    | "awaiting_payment";
 };
 
 /**
@@ -65,11 +71,19 @@ export function hasAdminRole(role: Viewer["role"]): boolean {
 
 export const ACCOUNT_TRANSITIONS: Record<Viewer["status"], Viewer["status"][]> =
   {
-    pending: ["approved", "rejected", "needs_changes"],
-    needs_changes: ["pending", "approved", "rejected"],
+    // Approving an application never grants access: the applicant pays the
+    // annual fee first, then an admin confirms payment (awaiting_payment ->
+    // approved).
+    pending: ["awaiting_payment", "rejected", "needs_changes"],
+    needs_changes: ["pending", "awaiting_payment", "rejected"],
     rejected: ["pending"], // re-application, admin initiated
-    approved: ["suspended"],
-    suspended: ["approved"],
+    // An existing member moves back to awaiting_payment when a membership
+    // year ends or the paid-membership launch resets everyone.
+    awaiting_payment: ["approved", "suspended"],
+    approved: ["suspended", "awaiting_payment"],
+    // Unsuspend returns to approved only while a paid year is running;
+    // otherwise it lands on awaiting_payment (see lifecycle.ts).
+    suspended: ["approved", "awaiting_payment"],
   };
 
 export function canTransitionAccount(

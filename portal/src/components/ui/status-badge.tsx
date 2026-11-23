@@ -7,6 +7,7 @@ export type Status =
   | "rejected"
   | "needs-changes"
   | "suspended"
+  | "awaiting-payment"
   | "active"
   | "old";
 
@@ -16,6 +17,7 @@ const statusClasses: Record<Status, string> = {
   rejected: "bg-danger-bg text-danger",
   "needs-changes": "bg-warning-bg text-warning",
   suspended: "bg-danger-bg text-danger",
+  "awaiting-payment": "bg-warning-bg text-warning",
   active: "bg-success-bg text-success",
   old: "bg-surface-subtle text-ink-muted",
 };
@@ -26,6 +28,7 @@ const statusLabels: Record<Status, string> = {
   rejected: "Rejected",
   "needs-changes": "Needs changes",
   suspended: "Suspended",
+  "awaiting-payment": "Awaiting payment",
   active: "Active",
   old: "Expired",
 };

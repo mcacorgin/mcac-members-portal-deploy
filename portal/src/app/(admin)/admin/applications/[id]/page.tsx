@@ -29,6 +29,7 @@ const BADGE: Record<string, Status> = {
   rejected: "rejected",
   needs_changes: "needs-changes",
   suspended: "suspended",
+  awaiting_payment: "awaiting-payment",
 };
 
 export default async function ApplicationDetailPage({
@@ -131,6 +132,21 @@ export default async function ApplicationDetailPage({
                 <dt className="text-xs text-ink-muted">Joined</dt>
                 <dd className="text-ink">{formatDate(record.createdAt)}</dd>
               </div>
+              {record.membershipPaidAt ? (
+                <div data-testid="membership-paid">
+                  <dt className="text-xs text-ink-muted">Fee paid</dt>
+                  <dd className="text-ink">
+                    {formatDate(record.membershipPaidAt)}
+                    {record.membershipValidUntil
+                      ? `, valid until ${formatDate(record.membershipValidUntil)}${
+                          record.membershipValidUntil < new Date()
+                            ? " (ended)"
+                            : ""
+                        }`
+                      : ""}
+                  </dd>
+                </div>
+              ) : null}
               <div>
                 <dt className="text-xs text-ink-muted">MCAC updates</dt>
                 <dd className="break-all text-ink">{record.communicationEmail}</dd>
@@ -314,6 +330,7 @@ export default async function ApplicationDetailPage({
             userId={record.id}
             applicantName={record.name || "Unnamed applicant"}
             status={record.status}
+            statusChangedAt={record.statusChangedAt?.toISOString() ?? ""}
             acceptedCurrent={record.consent.acceptedCurrent}
             evidence={evidence}
           />

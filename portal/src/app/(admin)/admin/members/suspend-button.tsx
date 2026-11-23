@@ -23,7 +23,7 @@ export function SuspendButton({
     event.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await decideAction(userId, "suspended", reason);
+      const result = await decideAction(userId, "suspended", reason, "approved");
       if (!result.ok) {
         setError(result.fieldErrors?.reason?.[0] ?? result.message);
         return;

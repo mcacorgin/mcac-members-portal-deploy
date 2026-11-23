@@ -7,6 +7,7 @@ import {
   Card,
   FieldError,
   FormField,
+  Input,
   Textarea,
 } from "@/components/ui";
 import type { Viewer } from "@/lib/authz";
@@ -59,21 +60,25 @@ export function DecisionPanel({
   userId,
   applicantName,
   status,
+  statusChangedAt,
   acceptedCurrent,
   evidence,
 }: {
   userId: string;
   applicantName: string;
   status: Status;
+  /** ISO time of the last status change, or "" if none; sent back to catch stale pages. */
+  statusChangedAt: string;
   acceptedCurrent: boolean;
   evidence: { complete: boolean; missing: string[] };
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [mode, setMode] = useState<keyof typeof REASON_DECISIONS | null>(null);
-  const [confirming, setConfirming] = useState<"approved" | "rejected" | null>(
-    null,
-  );
+  const [confirming, setConfirming] = useState<
+    "approved" | "rejected" | "paid" | null
+  >(null);
+  const [paymentRef, setPaymentRef] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [reasonError, setReasonError] = useState<string | null>(null);
@@ -99,7 +104,7 @@ export function DecisionPanel({
     setReasonError(null);
     setSuccess(null);
     startTransition(async () => {
-      const result = await decideAction(userId, to, withReason);
+      const result = await decideAction(userId, to, withReason, status, statusChangedAt);
       if (!result.ok) {
         const nextReasonError = result.fieldErrors?.reason?.[0] ?? null;
         setReasonError(nextReasonError);
@@ -110,6 +115,7 @@ export function DecisionPanel({
       setMode(null);
       setConfirming(null);
       setReason("");
+      setPaymentRef("");
       setSuccess(doneMessage ?? "Decision recorded.");
       router.refresh();
     });
@@ -125,6 +131,7 @@ export function DecisionPanel({
 
   const canApprove =
     status === "pending" || status === "needs_changes";
+  const awaitingPayment = status === "awaiting_payment";
 
   return (
     <Card data-testid="decision-panel" aria-busy={pending}>
@@ -137,7 +144,7 @@ export function DecisionPanel({
       </p>
 
       {(consentBlocked || (canApprove && evidenceBlocked)) &&
-      (canApprove || status === "suspended") ? (
+      (canApprove || awaitingPayment || status === "suspended") ? (
         <div
           className="mb-3 grid gap-2 rounded-container bg-warning-bg p-3"
           data-testid="consent-warning"
@@ -170,7 +177,23 @@ export function DecisionPanel({
             disabled={approveBlocked || pending}
             data-testid="approve-button"
           >
-            Approve
+            Approve application
+          </Button>
+        ) : null}
+
+        {awaitingPayment ? (
+          <Button
+            onClick={() => {
+              setMode(null);
+              setConfirming("paid");
+              setError(null);
+              setReasonError(null);
+              setSuccess(null);
+            }}
+            disabled={consentBlocked || pending}
+            data-testid="mark-paid-button"
+          >
+            Mark as paid
           </Button>
         ) : null}
 
@@ -196,7 +219,7 @@ export function DecisionPanel({
           </Button>
         ) : null}
 
-        {status === "approved" ? (
+        {status === "approved" || awaitingPayment ? (
           <Button
             variant="destructive"
             onClick={() => openReasonForm("suspended")}
@@ -250,13 +273,31 @@ export function DecisionPanel({
           >
             {confirming === "approved"
               ? "Approve this application?"
-              : "Reject this application?"}
+              : confirming === "paid"
+                ? "Confirm that the payment arrived?"
+                : "Reject this application?"}
           </h4>
           <p className="mt-1 text-sm text-ink-secondary">
             {confirming === "approved"
-              ? "The applicant will get member access immediately. The audit log will record your decision."
-              : "The applicant will not get member access. They will see the reason below."}
+              ? "The applicant will see how to pay the membership fee. They get no member access until you confirm their payment. The audit log will record your decision."
+              : confirming === "paid"
+                ? "The member gets access immediately and the membership runs for one year from today. The audit log will record your decision."
+                : "The applicant will not get member access. They will see the reason below."}
           </p>
+          {confirming === "paid" ? (
+            <FormField
+              label="Payment reference (optional)"
+              htmlFor="payment-reference"
+              hint="For example the UPI reference or bank transaction number. Only admins see it, in the audit log."
+            >
+              <Input
+                id="payment-reference"
+                value={paymentRef}
+                onChange={(event) => setPaymentRef(event.target.value)}
+                maxLength={120}
+              />
+            </FormField>
+          ) : null}
           {confirming === "rejected" ? (
             <p className="mt-2 rounded-control bg-surface px-3 py-2 text-sm text-ink">
               {reason.trim()}
@@ -270,23 +311,30 @@ export function DecisionPanel({
               data-testid={
                 confirming === "approved"
                   ? "confirm-approve"
-                  : "confirm-reject"
+                  : confirming === "paid"
+                    ? "confirm-paid"
+                    : "confirm-reject"
               }
-              onClick={() =>
-                run(
-                  confirming,
-                  confirming === "rejected" ? reason.trim() : undefined,
-                  confirming === "approved"
-                    ? "Application approved."
-                    : "Decision recorded and the applicant was notified.",
-                )
-              }
+              onClick={() => {
+                if (confirming === "approved")
+                  run("awaiting_payment", undefined, "Application approved. The applicant now sees how to pay.");
+                else if (confirming === "paid")
+                  run("approved", paymentRef.trim() || undefined, "Payment confirmed. The member now has access.");
+                else
+                  run(
+                    "rejected",
+                    reason.trim(),
+                    "Decision recorded and the applicant was notified.",
+                  );
+              }}
             >
               {pending
                 ? <PendingLabel>Saving...</PendingLabel>
                 : confirming === "approved"
                   ? "Approve application"
-                  : "Reject application"}
+                  : confirming === "paid"
+                    ? "Confirm payment"
+                    : "Reject application"}
             </Button>
             <Button
               type="button"

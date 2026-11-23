@@ -11,9 +11,12 @@ import { communicationEmail } from "@/lib/account/preferred-contact-email";
 export async function getAdminOverview(admin: Viewer | null): Promise<
   ActionResult<{
     pendingCount: number;
+    awaitingPaymentCount: number;
     needsChangesCount: number;
     memberCount: number;
     suspendedCount: number;
+    /** Approved members whose paid year has ended. Nothing locks them yet (open decision). */
+    paidYearEndedCount: number;
   }>
 > {
   const denied = adminAccessError(admin);
@@ -26,11 +29,23 @@ export async function getAdminOverview(admin: Viewer | null): Promise<
     .from(tables.users)
     .groupBy(tables.users.status);
   const by = new Map(rows.map((r) => [r.status, r.count]));
+  const [{ ended }] = await db
+    .select({ ended: sql<number>`count(*)::int` })
+    .from(tables.users)
+    .where(
+      and(
+        eq(tables.users.status, "approved"),
+        eq(tables.users.role, "member"),
+        sql`${tables.users.membershipValidUntil} < timezone('utc', now())`,
+      ),
+    );
   return ok({
     pendingCount: by.get("pending") ?? 0,
+    awaitingPaymentCount: by.get("awaiting_payment") ?? 0,
     needsChangesCount: by.get("needs_changes") ?? 0,
     memberCount: by.get("approved") ?? 0,
     suspendedCount: by.get("suspended") ?? 0,
+    paidYearEndedCount: ended,
   });
 }
 
@@ -38,7 +53,7 @@ export type ReviewQueueRow = {
   id: string;
   name: string;
   email: string;
-  status: "pending" | "needs_changes";
+  status: "pending" | "needs_changes" | "awaiting_payment";
   createdAt: Date;
   city: string;
   consented: boolean;
@@ -72,6 +87,7 @@ export async function listReviewQueue(
         or(
           eq(tables.users.status, "pending"),
           eq(tables.users.status, "needs_changes"),
+          eq(tables.users.status, "awaiting_payment"),
         ),
       )
       .orderBy(asc(tables.users.createdAt)),
@@ -95,7 +111,7 @@ export async function listReviewQueue(
       id: r.id,
       name: r.name,
       email: r.email,
-      status: r.status as "pending" | "needs_changes",
+      status: r.status as ReviewQueueRow["status"],
       createdAt: r.createdAt,
       city: r.city ?? "",
       consented: consented.has(r.id),
@@ -121,6 +137,8 @@ export async function getApplicationDetail(
     status: Viewer["status"];
     statusReason: string | null;
     statusChangedAt: Date | null;
+    membershipPaidAt: Date | null;
+    membershipValidUntil: Date | null;
     createdAt: Date;
     profile: {
       city: string;
@@ -179,6 +197,8 @@ export async function getApplicationDetail(
     status: user.status,
     statusReason: user.statusReason,
     statusChangedAt: user.statusChangedAt,
+    membershipPaidAt: user.membershipPaidAt,
+    membershipValidUntil: user.membershipValidUntil,
     createdAt: user.createdAt,
     profile: profile
       ? {
@@ -223,6 +243,7 @@ export async function listMembersAdmin(
       role: Viewer["role"];
       city: string;
       createdAt: Date;
+      membershipValidUntil: Date | null;
       linkedInLinked: boolean;
     }[];
     total: number;
@@ -258,6 +279,7 @@ export async function listMembersAdmin(
         role: tables.users.role,
         city: tables.profiles.city,
         createdAt: tables.users.createdAt,
+        membershipValidUntil: tables.users.membershipValidUntil,
       })
       .from(tables.users)
       .leftJoin(tables.profiles, eq(tables.profiles.userId, tables.users.id))

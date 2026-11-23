@@ -9,7 +9,7 @@ import { err, type ActionResult } from "@/lib/contracts/result";
  * Shared writer for the notice's optional communications consent, used by every
  * lifecycle screen. Section 10 promises a withdrawal mechanism comparable to
  * the one that took the consent, so this is reachable from the member profile
- * and from the pending / status screens - anywhere a signed-in account can be.
+ * and from the pending / status / payment screens - anywhere a signed-in account can be.
  */
 export async function saveOptionalConsentsAction(
   _prev: ActionResult | null,
@@ -28,5 +28,6 @@ export async function saveOptionalConsentsAction(
   revalidatePath("/me/edit");
   revalidatePath("/application/pending");
   revalidatePath("/application/status");
+  revalidatePath("/application/payment");
   return communications;
 }

@@ -62,9 +62,11 @@ export function presentNotification(
           ? payload.status.replace(/_/g, " ")
           : "updated";
       const title =
-        payload.status === "approved"
-          ? "Welcome to MCAC. Your membership is approved."
-          : payload.status === "needs_changes"
+        payload.status === "approved" && payload.paid === true
+          ? "MCAC confirmed your payment. Your membership is active."
+          : payload.status === "approved"
+            ? "Welcome to MCAC. Your membership is approved."
+            : payload.status === "needs_changes"
             ? "MCAC asked for changes to your application"
             : payload.status === "rejected"
               ? "Your application was not approved"

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { MEMBERSHIP_FEE_LABEL } from "@/lib/membership-fee";
 import { and, asc, eq, isNull, lt } from "drizzle-orm";
 import { db, tables } from "@/db";
 import { sendMail } from "@/lib/mail";
@@ -59,9 +60,28 @@ export async function buildOutboxEmails(
   };
 
   switch (row.name) {
+    case "account.payment_due": {
+      const u = await userEmail(String(p.userId));
+      if (!u) return [];
+      return [
+        {
+          to: u.email,
+          subject: "Your MCAC application is approved: membership fee due",
+          text: `Hello ${u.name},\n\nYour MCAC application is approved. To become a member, pay the membership fee of ${MEMBERSHIP_FEE_LABEL}. Sign in to see how to pay:\n${base}/application/payment\n\nAn MCAC administrator confirms your payment and opens your member access.\n`,
+        },
+      ];
+    }
     case "account.approved": {
       const u = await userEmail(String(p.userId));
       if (!u) return [];
+      if (p.paid === true)
+        return [
+          {
+            to: u.email,
+            subject: "MCAC payment received: your membership is active",
+            text: `Hello ${u.name},\n\nMCAC has confirmed your payment. Your membership is active. Sign in to enter the portal:\n${base}/home\n`,
+          },
+        ];
       const sections = Array.isArray(p.enabledSections)
         ? (p.enabledSections as string[])
         : [];

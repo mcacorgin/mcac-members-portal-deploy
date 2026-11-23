@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandMark, Button } from "@/components/ui";
+import { MEMBERSHIP_FEE_LABEL } from "@/lib/membership-fee";
 import {
   PublicFooter,
   PublicHeader,
@@ -14,7 +15,7 @@ import {
  * need to read legitimacy and privacy in the first screen, so the page is
  * editorial rather than promotional: system type at scale, hairline rules
  * instead of floating cards, one navy accent, gold only inside the real mark.
- * No photography, no numbers, no claims beyond what the portal actually does.
+ * No photography or claims beyond what the portal actually does.
  *
  * Light theme only, matching the rest of the product (globals.css has no dark
  * tokens). Motion is limited to CSS hover and active states, which the global
@@ -48,15 +49,19 @@ const inside = [
 const steps = [
   {
     title: "Apply",
-    body: "Start an application with your professional details and your contact choices.",
+    body: "Start an application with your professional details and contact choices. You do not pay when you apply.",
   },
   {
     title: "Review",
-    body: "An administrator reads every application and decides who joins.",
+    body: "An MCAC admin reviews your application.",
+  },
+  {
+    title: "Pay",
+    body: `If your application is approved, the portal shows you how to pay the membership fee of ${MEMBERSHIP_FEE_LABEL}.`,
   },
   {
     title: "Access",
-    body: "Once approved, you get member access.",
+    body: "MCAC confirms your payment and opens your member access.",
   },
 ];
 

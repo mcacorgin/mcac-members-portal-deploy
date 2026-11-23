@@ -113,6 +113,13 @@
       "when": 1792627200000,
       "tag": "0015_retire_asset_sales_add_sector_agnostic",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792713600000,
+      "tag": "0016_add_awaiting_payment",
+      "breakpoints": true
     }
   ]
 }

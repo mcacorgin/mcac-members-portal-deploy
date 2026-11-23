@@ -5,7 +5,7 @@ export const ERROR_CODES = [
   "unauthorized", // no valid session
   "forbidden", // authenticated but not permitted (fail closed)
   "pending_approval", // account is pending; member content is isolated
-  "account_restricted", // rejected / needs_changes / suspended
+  "account_restricted", // rejected / needs_changes / suspended / awaiting_payment
   "validation", // input failed schema checks; fieldErrors set
   "not_found",
   "conflict", // duplicate account, stale update
