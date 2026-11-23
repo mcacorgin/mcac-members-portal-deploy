@@ -24,6 +24,7 @@ export const metadata = { title: "Members - MCAC Members Portal" };
 
 const STATUSES: Viewer["status"][] = [
   "pending",
+  "awaiting_payment",
   "approved",
   "needs_changes",
   "rejected",
@@ -36,6 +37,7 @@ const BADGE: Record<string, Status> = {
   rejected: "rejected",
   needs_changes: "needs-changes",
   suspended: "suspended",
+  awaiting_payment: "awaiting-payment",
 };
 
 const STATUS_LABELS: Record<Viewer["status"], string> = {
@@ -44,6 +46,7 @@ const STATUS_LABELS: Record<Viewer["status"], string> = {
   needs_changes: "Needs changes",
   rejected: "Rejected",
   suspended: "Suspended",
+  awaiting_payment: "Awaiting payment",
 };
 
 function first(value: string | string[] | undefined): string {

@@ -10,6 +10,7 @@ import {
 } from "@/lib/account/link-errors";
 import { Card, PageHeader, ScreenId } from "@/components/ui";
 import { AdminContactLine } from "@/components/admin-contact-line";
+import { FeeSteps } from "@/components/membership-fee";
 import { PendingButton } from "../_components/pending-button";
 import { signInWithLinkedIn } from "./actions";
 import { SignInForm } from "./sign-in-form";
@@ -126,6 +127,7 @@ export default async function SignInPage({
           <AdminContactLine lead="Need help?" />
         </div>
       </Card>
+      <FeeSteps />
       <p className="text-sm">
         <Link
           href="/privacy"

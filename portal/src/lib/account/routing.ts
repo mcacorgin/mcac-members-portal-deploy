@@ -37,6 +37,8 @@ export async function resolveLandingPath(
     case "rejected":
     case "suspended":
       return "/application/status";
+    case "awaiting_payment":
+      return "/application/payment";
     case "approved":
       return "/home";
   }

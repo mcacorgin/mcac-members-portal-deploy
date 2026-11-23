@@ -37,8 +37,19 @@ function ChangesReason({
   );
 }
 
+const QUEUE_BADGE = {
+  pending: "pending",
+  needs_changes: "needs-changes",
+  awaiting_payment: "awaiting-payment",
+} as const;
+
 const STATS = [
   { key: "pendingCount", label: "Pending review", testId: "stat-pending" },
+  {
+    key: "awaitingPaymentCount",
+    label: "Awaiting payment",
+    testId: "stat-awaiting-payment",
+  },
   {
     key: "needsChangesCount",
     label: "Needs changes",
@@ -66,7 +77,7 @@ export default async function AdminOverviewPage() {
       />
 
       {overview.ok ? (
-        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
           {STATS.map((stat) => (
             <Card
               key={stat.key}
@@ -125,11 +136,7 @@ export default async function AdminOverviewPage() {
                         </p>
                       </div>
                       <StatusBadge
-                        status={
-                          row.status === "needs_changes"
-                            ? "needs-changes"
-                            : "pending"
-                        }
+                        status={QUEUE_BADGE[row.status]}
                       />
                     </div>
                     <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
@@ -208,11 +215,7 @@ export default async function AdminOverviewPage() {
                     </td>
                     <td className="max-w-[18rem] px-4 py-2.5 align-top">
                       <StatusBadge
-                        status={
-                          row.status === "needs_changes"
-                            ? "needs-changes"
-                            : "pending"
-                        }
+                        status={QUEUE_BADGE[row.status]}
                       />
                       {row.changesReason ? (
                         <ChangesReason

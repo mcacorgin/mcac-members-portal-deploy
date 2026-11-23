@@ -7,6 +7,7 @@ import { getCurrentNotice } from "@/lib/account/registration";
 import { ADMIN_EMAIL } from "@/lib/contact";
 import { Card, ErrorState, PageHeader, ScreenId } from "@/components/ui";
 import { AdminContactLine } from "@/components/admin-contact-line";
+import { FeeSteps } from "@/components/membership-fee";
 import { PendingButton } from "../_components/pending-button";
 import { signInWithLinkedIn } from "../sign-in/actions";
 import { RegisterForm } from "./register-form";
@@ -83,6 +84,7 @@ export default async function RegisterPage() {
           </div>
         </Card>
       )}
+      <FeeSteps />
       {notice ? (
         <p className="text-sm">
           <Link

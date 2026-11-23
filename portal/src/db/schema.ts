@@ -29,6 +29,10 @@ export const accountStatus = pgEnum("account_status", [
   "rejected",
   "needs_changes",
   "suspended",
+  // Admin approved the application; the member must pay the annual fee before
+  // an admin confirms payment and moves them to approved. Existing members
+  // also land here when a membership year ends or is reset.
+  "awaiting_payment",
 ]);
 
 export const fieldVisibility = pgEnum("field_visibility", [
@@ -91,6 +95,10 @@ export const users = pgTable(
     // Sequential MCAC member number, shown as MCAC001 (tracker row 56).
     // Assigned once, on first approval, and never reused or renumbered.
     memberNumber: integer("member_number"),
+    // Annual membership fee (naive UTC like every timestamp here). Set when an
+    // admin confirms payment; membershipValidUntil is one year later.
+    membershipPaidAt: timestamp("membership_paid_at", { mode: "date" }),
+    membershipValidUntil: timestamp("membership_valid_until", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().default(utcNow),
   },
   (t) => [
