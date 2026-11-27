@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { listNewMembers } from "@/lib/account/new-members";
+import { NewMembers } from "./new-members";
 import { redirect } from "next/navigation";
 import { CaretDownIcon } from "@phosphor-icons/react/dist/ssr/CaretDown";
 import { MagnifyingGlassIcon } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass";
@@ -108,7 +110,7 @@ export default async function HomePage({
     page: pageNum,
   } = params;
 
-  const [enabledTypes, result, opportunityDays, jobDays] = await Promise.all([
+  const [enabledTypes, result, opportunityDays, jobDays, newMembers] = await Promise.all([
     enabledSections(viewer!.id),
     listFeed(viewer, {
       view,
@@ -121,6 +123,7 @@ export default async function HomePage({
     }),
     getConfig("posts.opportunityExpiryDays"),
     getConfig("posts.jobExpiryDays"),
+    listNewMembers(viewer),
   ]);
 
   const header = (
@@ -135,6 +138,7 @@ export default async function HomePage({
     return (
       <div className="mx-auto w-full max-w-3xl">
         {header}
+        <NewMembers members={newMembers} />
         <ErrorState
           title="This section is not available"
           body="An admin has turned off posts for your account. The rest of the portal still works."
@@ -147,6 +151,7 @@ export default async function HomePage({
     return (
       <div className="mx-auto w-full max-w-3xl">
         {header}
+        <NewMembers members={newMembers} />
         {result.code === "section_disabled" ? (
           <ErrorState
             title="This section is not available"
@@ -199,6 +204,8 @@ export default async function HomePage({
         action={<ScreenId id="HOME-01" />}
         className="ui-feed-heading"
       />
+
+      <NewMembers members={newMembers} />
 
       <p id="home-view-label" className={ROW_LABEL_CLASS}>
         Show
