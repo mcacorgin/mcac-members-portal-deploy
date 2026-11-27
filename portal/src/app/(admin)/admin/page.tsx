@@ -10,6 +10,7 @@ import {
   StatusBadge,
 } from "@/components/ui";
 import { formatDate } from "../format";
+import { PersonRow } from "./person-row";
 import { CheckIcon } from "@phosphor-icons/react/dist/ssr/Check";
 
 export const metadata = { title: "Admin overview - MCAC Members Portal" };
@@ -131,7 +132,7 @@ export default async function AdminOverviewPage() {
                   <Link
                     href={`/admin/applications/${row.id}`}
                     aria-label={`Review application from ${name}`}
-                    className="ui-review-card block min-h-tap rounded-container border border-border bg-surface p-4 shadow-card transition-[background-color,border-color,scale] duration-150 ease-out-strong active:scale-[0.98]"
+                    className="ui-review-card block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy min-h-tap rounded-container border border-border bg-surface p-4 shadow-card transition-[background-color,border-color,scale] duration-150 ease-out-strong active:scale-[0.98]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -201,9 +202,11 @@ export default async function AdminOverviewPage() {
             <tbody data-testid="review-queue">
               {queue.data.map((row) => {
                 const name = row.name || "Unnamed applicant";
+                const href = `/admin/applications/${row.id}`;
                 return (
-                  <tr
+                  <PersonRow
                     key={row.id}
+                    href={href}
                     className="ui-table-row border-b border-border last:border-b-0 hover:bg-surface-subtle"
                   >
                     <td className="px-4 py-2.5 font-medium text-ink">
@@ -241,7 +244,7 @@ export default async function AdminOverviewPage() {
                     </td>
                     <td className="px-4 py-2.5 text-right whitespace-nowrap">
                       <Link
-                        href={`/admin/applications/${row.id}`}
+                        href={href}
                         aria-label={`Review application from ${name}`}
                         className="inline-flex min-h-tap items-center gap-1 font-medium text-navy hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
                       >
@@ -249,7 +252,7 @@ export default async function AdminOverviewPage() {
                         <span aria-hidden="true">&rarr;</span>
                       </Link>
                     </td>
-                  </tr>
+                  </PersonRow>
                 );
               })}
             </tbody>
