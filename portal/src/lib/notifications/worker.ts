@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { MEMBERSHIP_FEE_LABEL } from "@/lib/membership-fee";
+import { MEMBERSHIP_FEE_LABEL, PAYMENT_DETAILS } from "@/lib/membership-fee";
 import { and, asc, eq, isNull, lt } from "drizzle-orm";
 import { db, tables } from "@/db";
 import { sendMail } from "@/lib/mail";
@@ -63,11 +63,28 @@ export async function buildOutboxEmails(
     case "account.payment_due": {
       const u = await userEmail(String(p.userId));
       if (!u) return [];
+      const qrLink = PAYMENT_DETAILS.qrImagePath
+        ? `QR image: ${new URL(PAYMENT_DETAILS.qrImagePath, base).href}\n`
+        : "";
       return [
         {
           to: u.email,
           subject: "Your MCAC application is approved: membership fee due",
-          text: `Hello ${u.name},\n\nYour MCAC application is approved. To become a member, pay the membership fee of ${MEMBERSHIP_FEE_LABEL}. Sign in to see how to pay:\n${base}/application/payment\n\nAn MCAC administrator confirms your payment and opens your member access.\n`,
+          text: `Hello ${u.name},
+
+Your MCAC application is approved. To become a member, pay the membership fee of ${MEMBERSHIP_FEE_LABEL}. Sign in to see how to pay:
+${base}/application/payment
+
+Bank transfer details:
+Account name: ${PAYMENT_DETAILS.accountName}
+Bank: ${PAYMENT_DETAILS.bankName}
+Account type: ${PAYMENT_DETAILS.accountType}
+Account number: ${PAYMENT_DETAILS.accountNumber}
+IFSC: ${PAYMENT_DETAILS.ifsc}
+Branch: ${PAYMENT_DETAILS.branch}
+${qrLink}
+An MCAC administrator confirms your payment and opens your member access.
+`,
         },
       ];
     }

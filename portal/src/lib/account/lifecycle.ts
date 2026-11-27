@@ -191,7 +191,11 @@ export async function transitionAccount(
           action: `account.${to}`,
           subjectType: "user",
           subjectId: subject.id,
-          detail: { from: subject.status, ...(reason ? { reason } : {}) },
+          detail: {
+            from: subject.status,
+            ...(paidNow && subject.memberNumber == null ? { firstPaidActivation: true } : {}),
+            ...(reason ? { reason } : {}),
+          },
         },
         tx,
       );
