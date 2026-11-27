@@ -19,6 +19,7 @@ import { SuspendButton } from "./suspend-button";
 import { UnlinkLinkedInButton } from "./unlink-linkedin-button";
 import { ModerationSection } from "./moderation";
 import { RoleControl } from "./role-control";
+import { PersonRow } from "../person-row";
 
 export const metadata = { title: "Members - MCAC Members Portal" };
 
@@ -194,14 +195,16 @@ export default async function MembersPage({
                   const canUnlink = row.linkedInLinked;
                   const canChangeRole =
                     viewer?.role === "superadmin" && row.role !== "superadmin";
+                  const href = `/admin/applications/${row.id}`;
                   return (
-                    <tr
+                    <PersonRow
                       key={row.id}
+                      href={href}
                       className="border-b border-border last:border-b-0 hover:bg-surface-subtle"
                     >
                       <td className="p-0 font-medium text-ink">
                         <Link
-                          href={`/admin/applications/${row.id}`}
+                          href={href}
                           className="flex min-h-tap items-center px-4 py-2.5 hover:underline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-navy"
                         >
                           {row.name || "Unnamed account"}
@@ -258,7 +261,7 @@ export default async function MembersPage({
                           ) : null}
                         </div>
                       </td>
-                    </tr>
+                    </PersonRow>
                   );
                 })}
               </tbody>
