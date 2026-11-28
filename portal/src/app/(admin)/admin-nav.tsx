@@ -13,6 +13,7 @@ const ITEMS = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/policy", label: "Policy" },
   { href: "/admin/members", label: "Members" },
+  { href: "/admin/metrics", label: "Metrics" },
 ] as const;
 
 function isActive(pathname: string, href: string): boolean {
